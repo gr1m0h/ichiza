@@ -1,0 +1,20 @@
+name: ichiza setup
+description: Install the ichiza CLI
+inputs:
+  version:
+    description: ichiza version (Go module version, e.g. v0.1.0 or latest)
+    default: latest
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    # 初期は go install で十分。リリースが安定したら
+    # GoReleaser のバイナリ + キャッシュに切り替える（Roadmap）。
+    - run: go install "github.com/gr1m0h/ichiza@${INPUT_VERSION}"
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+    - run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      shell: bash

@@ -1,0 +1,16 @@
+name: ichiza remind
+description: Check task deadlines and notify (Slack webhook, X intent URL attached)
+inputs:
+  version:
+    description: ichiza version
+    default: latest
+runs:
+  using: composite
+  steps:
+    - uses: gr1m0h/ichiza/actions/setup@v0
+      with:
+        version: ${{ inputs.version }}
+    - run: ichiza remind --notify slack
+      shell: bash
+      env:
+        SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}

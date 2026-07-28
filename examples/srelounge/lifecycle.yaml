@@ -1,0 +1,83 @@
+# SRE Lounge Hiroshima の実運用ライフサイクル。
+# 汎用利用時はこのファイルをコピーして書き換えてください。
+tasks:
+  # --- 準備（〜2週間前）---
+  - title: 会場確定・確保（収容/電源/Wi-Fi/プロジェクタ/懇親会スペース）
+    due: -35d
+    labels: [venue]
+    modes: [onsite, hybrid]
+  - title: 入館方法・鍵・撤収時間を会場側と確認
+    due: -30d
+    labels: [venue]
+    modes: [onsite, hybrid]
+  - title: タイムテーブル設計
+    due: -32d
+    labels: [program]
+  - title: 登壇者確定・掲載情報の依頼（Issue Form リンク送付）
+    due: -30d
+    labels: [speakers]
+  - title: connpassイベントページ作成・公開
+    due: -30d
+    labels: [announce]
+  - title: Blog宣伝記事の執筆・公開
+    due: -21d
+    labels: [announce]
+  - title: SNS・コミュニティで告知
+    due: -21d
+    labels: [announce]
+  - title: 座談会/パネル設計（お題・進行役・流れ）
+    due: -14d
+    labels: [program]
+  - title: 備品リストアップ（HDMI/USB-C変換/延長コード/予備PC/マイク)
+    due: -14d
+    labels: [venue]
+    modes: [onsite, hybrid]
+
+  # --- ハイブリッド/オンライン時のみ ---
+  - title: YouTube配信枠作成（限定公開）
+    due: -14d
+    labels: [streaming]
+    modes: [hybrid, online]
+  - title: StreamYard設定・リモート登壇者へゲストリンク送付
+    due: -7d
+    labels: [streaming]
+    modes: [hybrid, online]
+  - title: 配信リハーサル（音声経路・画面共有テスト）
+    due: -3d
+    labels: [streaming]
+    modes: [hybrid, online]
+
+  # --- 直前（1週間前〜前日）---
+  - title: 参加者数の最終確認・プログラム調整判断
+    due: -7d
+    labels: [program]
+  - title: 受付方法の確定（名簿・名札・チェックイン手順）
+    due: -7d
+    labels: [ops]
+    modes: [onsite, hybrid]
+  - title: 当日役割の最終確認
+    due: -5d
+    labels: [ops]
+  - title: SNS・コミュニティで直前リマインド
+    due: -3d
+    labels: [announce]
+
+  # --- 当日 ---
+  - title: 設営（配線/投影テスト/Wi-Fi/マイク/受付セット）・撤収
+    due: 0d
+    labels: [ops]
+    modes: [onsite, hybrid]
+
+  # --- 事後 ---
+  - title: お礼（登壇者DM・会場・参加者SNS）
+    due: 1d
+    labels: [followup]
+  - title: アンケート・フィードバック収集
+    due: 3d
+    labels: [followup]
+  - title: Blog開催記事の執筆・公開（アーカイブURL埋め込み）
+    due: 7d
+    labels: [followup]
+  - title: 振り返り（KPT実施）
+    due: 10d
+    labels: [followup]

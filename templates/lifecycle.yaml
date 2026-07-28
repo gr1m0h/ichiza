@@ -1,0 +1,16 @@
+# 汎用ライフサイクルテンプレート（最小構成）。
+# コミュニティ固有の要件は examples/ を参考にカスタマイズしてください。
+tasks:
+  - { title: 会場確定・確保, due: -35d, labels: [venue], modes: [onsite, hybrid] }
+  - { title: イベントページ作成・公開, due: -30d, labels: [announce] }
+  - { title: 登壇者確定・掲載情報の依頼, due: -30d, labels: [speakers] }
+  - { title: SNS・コミュニティで告知, due: -21d, labels: [announce] }
+  - { title: 配信枠作成, due: -14d, labels: [streaming], modes: [hybrid, online] }
+  - { title: 配信リハーサル, due: -3d, labels: [streaming], modes: [hybrid, online] }
+  - { title: 参加者数の最終確認, due: -7d, labels: [program] }
+  - { title: 直前リマインド, due: -3d, labels: [announce] }
+  - { title: 設営・開催・撤収, due: 0d, labels: [ops], modes: [onsite, hybrid] }
+  - { title: 開催（配信オペレーション）, due: 0d, labels: [ops], modes: [online] }
+  - { title: お礼（登壇者・会場・参加者）, due: 1d, labels: [followup] }
+  - { title: アンケート収集, due: 3d, labels: [followup] }
+  - { title: 振り返り, due: 10d, labels: [followup] }
