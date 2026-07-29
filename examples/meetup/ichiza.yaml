@@ -1,0 +1,25 @@
+# 標準的なハイブリッド勉強会のフル構成設定例。
+# 5役体制（+配信担当）・チェックリスト付きライフサイクル・X intent 告知。
+# コピーして自分のコミュニティに合わせて書き換えてください。
+lifecycle: examples/meetup/lifecycle.yaml
+events_dir: events
+defaults:
+  mode: hybrid
+  venue:
+    capacity: 30
+    facilities: [wifi, projector, hdmi]
+    checkin: 名簿
+  roles: [mc, reception, timekeeper, director, afterparty]
+  streaming_role: streaming
+  streaming:
+    platform: streamyard
+    camera: [smartphone]
+  timetable:
+    - { start: "19:00", title: オープニング }
+notifier:
+  type: slack
+registry:
+  type: connpass
+sns:
+  x:
+    mode: intent

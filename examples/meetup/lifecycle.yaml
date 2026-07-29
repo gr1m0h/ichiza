@@ -1,0 +1,152 @@
+# 標準的な勉強会・ミートアップのフル構成ライフサイクル例。
+# ハイブリッド開催・チェックリスト付き Issue・定期開催サイクルを含む。
+# コピーして自分のコミュニティに合わせて書き換えてください。
+tasks:
+  # --- 準備（〜2週間前）---
+  - title: 会場確定・確保
+    due: -35d
+    labels: [venue]
+    modes: [onsite, hybrid]
+    body: |
+      確認項目:
+      - [ ] 収容人数
+      - [ ] 電源
+      - [ ] Wi-Fi
+      - [ ] プロジェクタ / HDMI
+      - [ ] 懇親会スペースの有無
+  - title: タイムテーブル設計
+    due: -32d
+    labels: [program]
+  - title: 登壇者確定・コミュニケーション
+    due: -30d
+    labels: [speakers]
+    body: |
+      - [ ] 登壇者確定・掲載情報の依頼（Issue Form リンク送付）
+      - [ ] セッション内容・進行の共有もこのスレッドで継続する
+  - title: イベントページ作成・公開
+    due: -30d
+    labels: [announce]
+    body: |
+      connpass 等。1ヶ月前までの公開を目安に。
+  - title: 入館方法・鍵・撤収時間を会場側と確認
+    due: -30d
+    labels: [venue]
+    modes: [onsite, hybrid]
+  - title: 宣伝記事の執筆・公開
+    due: -21d
+    labels: [announce]
+  - title: SNS・コミュニティで告知
+    due: -21d
+    labels: [announce]
+  - title: 企画セッションの設計（座談会/パネル等）
+    due: -14d
+    labels: [program]
+    body: |
+      - [ ] お題
+      - [ ] 進行役
+      - [ ] 流れ
+  - title: 司会資料の作成
+    due: -14d
+    labels: [program]
+  - title: 備品リストアップ
+    due: -14d
+    labels: [venue]
+    modes: [onsite, hybrid]
+    body: |
+      - [ ] HDMI・USB-C変換
+      - [ ] 延長コード
+      - [ ] 予備PC
+      - [ ] マイク
+
+  # --- ハイブリッド/オンライン時のみ ---
+  - title: 配信枠作成
+    due: -14d
+    labels: [streaming]
+    modes: [hybrid, online]
+  - title: 配信ツール設定・リモート登壇者へゲストリンク送付
+    due: -7d
+    labels: [streaming]
+    modes: [hybrid, online]
+  - title: 配信リハーサル（音声経路・画面共有テスト）
+    due: -3d
+    labels: [streaming]
+    modes: [hybrid, online]
+
+  # --- 直前準備（1週間前〜前日）---
+  - title: 参加者数の最終確認・プログラム調整判断
+    due: -7d
+    labels: [program]
+  - title: 受付方法の確定（名簿・名札・チェックイン手順）
+    due: -7d
+    labels: [ops]
+    modes: [onsite, hybrid]
+  - title: 当日役割の最終確認（誰が何をやるか）
+    due: -5d
+    labels: [ops]
+  - title: SNS・コミュニティで直前リマインド
+    due: -3d
+    labels: [announce]
+
+  # --- 当日 ---
+  - title: 当日運営（設営→受付→進行→撤収）
+    due: 0d
+    labels: [ops]
+    modes: [onsite, hybrid]
+    body: |
+      ## 流れ
+      - [ ] 設営: 配線 / 投影テスト / Wi-Fi確認 / マイクテスト / 受付セット
+      - [ ] 司会含め登壇者投影・接続チェック
+      - [ ] 受付開始 → オープニング → 各セッション → クロージング・告知
+      - [ ] 撤収・原状復帰
+      - [ ] （あれば）懇親会
+
+      ## 役割
+      | 役割 | やること |
+      |---|---|
+      | 司会 (mc) | 進行・登壇者紹介・各種アナウンス・巻き調整 |
+      | 受付&写真 (reception) | チェックイン、遅刻者対応、当日の様子をハッシュタグ付きでSNS投稿 |
+      | タイムキーパー&機材・配信 (timekeeper/streaming) | 全体の時間管理・残り時間の合図、マイク・接続トラブル対応 |
+      | 全体統括 (director) | 予備・全体の目配り・想定外対応 |
+      | 懇親会幹事 (afterparty) | 懇親会の店決め・案内 |
+
+      気づいたことはその場で Issue に（振り返りの一次ソース）。
+  - title: 開催（配信オペレーション）
+    due: 0d
+    labels: [ops]
+    modes: [online]
+  - title: 懇親会（お店決め・案内）
+    due: 0d
+    labels: [ops]
+    modes: [onsite, hybrid]
+    body: |
+      会の終わりに懇親会へ行く人を募ってお店を予約、案内する。
+
+  # --- 事後 ---
+  - title: お礼（登壇者・会場・参加者）
+    due: 1d
+    labels: [followup]
+    body: |
+      - [ ] 登壇者: DM 等で個別に（準備段階でやりとりしていた人から送るとスムーズ）
+      - [ ] 会場: 会場を出るタイミング、お返しするタイミングで口頭で伝える
+      - [ ] 参加者: SNS で伝える
+  - title: アンケート・フィードバック収集
+    due: 3d
+    labels: [followup]
+  - title: 開催記事の執筆・公開（アーカイブURL埋め込み）
+    due: 7d
+    labels: [followup]
+  - title: 振り返り（KPT実施）
+    due: 10d
+    labels: [followup]
+    body: |
+      当日に立てた Issue + アンケート結果を材料に Keep / Problem / Try を整理する。
+      Try のうち運営プロセスの改善は templates/lifecycle.yaml に反映すると
+      次回の旗揚げから自動で効く。
+
+  # --- 次回へ（開催周期に合わせて調整）---
+  - title: 次回イベントの旗揚げ（Run workflow）
+    due: 105d
+    labels: [ops]
+    body: |
+      開催周期に合わせて due を調整する（105d ≒ 3.5ヶ月後 = 4ヶ月周期の例）。
+      開催日は旗揚げ日から 5 週間以上先に置くこと（最長オフセット -35d のため）。
