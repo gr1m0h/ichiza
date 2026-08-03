@@ -7,8 +7,8 @@ import (
 	"github.com/gr1m0h/ichiza/internal/event"
 )
 
-// GitHub が Issue Form (starter/.github/ISSUE_TEMPLATE/speaker.yml) から
-// 生成する markdown 本文の実形式。
+// The actual markdown body format GitHub generates from the
+// Issue Form (starter/.github/ISSUE_TEMPLATE/speaker.yml).
 const fullBody = `### お名前（ハンドルネーム可）
 
 gr1m0h
@@ -94,7 +94,7 @@ func TestConnpass(t *testing.T) {
 		"gr1m0h（リモート登壇）",
 		"https://x.com/gr1m0h",
 		"SRE です。",
-		"### タイトル未定", // セッションタイトル空欄はプレースホルダ
+		"### タイトル未定", // empty session title falls back to the placeholder
 		"hanako",
 	} {
 		if !strings.Contains(out, want) {

@@ -1,8 +1,8 @@
-# 標準的な勉強会・ミートアップのフル構成ライフサイクル例。
-# ハイブリッド開催・チェックリスト付き Issue・定期開催サイクルを含む。
-# コピーして自分のコミュニティに合わせて書き換えてください。
+# Full-featured lifecycle example for a standard meetup.
+# Includes hybrid hosting, checklist issues, and a recurring cadence.
+# Copy and adapt to your own community.
 tasks:
-  # --- 準備（〜2週間前）---
+  # --- Preparation (until ~2 weeks before) ---
   - title: 会場確定・確保
     due: -35d
     labels: [venue]
@@ -58,7 +58,7 @@ tasks:
       - [ ] 予備PC
       - [ ] マイク
 
-  # --- ハイブリッド/オンライン時のみ ---
+  # --- Hybrid / online only ---
   - title: 配信枠作成
     due: -14d
     labels: [streaming]
@@ -72,7 +72,7 @@ tasks:
     labels: [streaming]
     modes: [hybrid, online]
 
-  # --- 直前準備（1週間前〜前日）---
+  # --- Final prep (1 week before to the day before) ---
   - title: 参加者数の最終確認・プログラム調整判断
     due: -7d
     labels: [program]
@@ -87,7 +87,7 @@ tasks:
     due: -3d
     labels: [announce]
 
-  # --- 当日 ---
+  # --- Event day ---
   - title: 当日運営（設営→受付→進行→撤収）
     due: 0d
     labels: [ops]
@@ -121,7 +121,7 @@ tasks:
     body: |
       会の終わりに懇親会へ行く人を募ってお店を予約、案内する。
 
-  # --- 事後 ---
+  # --- Follow-up ---
   - title: お礼（登壇者・会場・参加者）
     due: 1d
     labels: [followup]
@@ -143,7 +143,7 @@ tasks:
       Try のうち運営プロセスの改善は templates/lifecycle.yaml に反映すると
       次回の旗揚げから自動で効く。
 
-  # --- 次回へ（開催周期に合わせて調整）---
+  # --- Toward the next event (adjust to your cadence) ---
   - title: 次回イベントの旗揚げ（Run workflow）
     due: 105d
     labels: [ops]

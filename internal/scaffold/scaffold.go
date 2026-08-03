@@ -31,8 +31,8 @@ type Result struct {
 	Tasks []lifecycle.Task
 }
 
-// slug はディレクトリ名とブランチ名にそのまま使われるため、
-// パストラバーサル防止として文字種を制限する。
+// slug is used verbatim as a directory and branch name,
+// so restrict its character set to prevent path traversal.
 var validSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 
 func Run(opt Options) (*Result, error) {

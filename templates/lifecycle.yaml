@@ -1,5 +1,5 @@
-# 汎用ライフサイクルテンプレート（最小構成）。
-# コミュニティ固有の要件は examples/ を参考にカスタマイズしてください。
+# Generic lifecycle template (minimal).
+# See examples/ for community-specific customization.
 tasks:
   - { title: 会場確定・確保, due: -35d, labels: [venue], modes: [onsite, hybrid] }
   - { title: イベントページ作成・公開, due: -30d, labels: [announce] }

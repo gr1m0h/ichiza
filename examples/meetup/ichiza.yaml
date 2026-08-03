@@ -1,6 +1,6 @@
-# 標準的なハイブリッド勉強会のフル構成設定例。
-# 5役体制（+配信担当）・チェックリスト付きライフサイクル・X intent 告知。
-# コピーして自分のコミュニティに合わせて書き換えてください。
+# Full-featured config example for a standard hybrid meetup.
+# 5-role staffing (+ streaming), checklist lifecycle, X intent announcements.
+# Copy and adapt to your own community.
 lifecycle: examples/meetup/lifecycle.yaml
 events_dir: events
 defaults:

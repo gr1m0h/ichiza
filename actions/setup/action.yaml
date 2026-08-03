@@ -10,8 +10,8 @@ runs:
     - uses: actions/setup-go@v5
       with:
         go-version: stable
-    # 初期は go install で十分。リリースが安定したら
-    # GoReleaser のバイナリ + キャッシュに切り替える（Roadmap）。
+    # go install is enough for now. Once releases stabilize,
+    # switch to GoReleaser binaries + cache (Roadmap).
     - run: go install "github.com/gr1m0h/ichiza@${INPUT_VERSION}"
       shell: bash
       env:

@@ -45,7 +45,7 @@ notifier:
 	if c.Notifier.Type != "discord" {
 		t.Errorf("notifier = %q", c.Notifier.Type)
 	}
-	// 未指定キーは fallback 値が残る
+	// Unspecified keys keep their fallback values
 	if c.EventsDir != "events" || c.Lifecycle != "templates/lifecycle.yaml" {
 		t.Errorf("unspecified keys lost fallback: %+v", c)
 	}

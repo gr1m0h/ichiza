@@ -81,7 +81,7 @@ func sections(body string) map[string]string {
 	return out
 }
 
-// Connpass renders the 登壇者 section for the connpass event page.
+// Connpass renders the "## 登壇者" speakers section for the connpass event page.
 func Connpass(speakers []event.Speaker) string {
 	var b strings.Builder
 	b.WriteString("## 登壇者\n")

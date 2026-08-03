@@ -48,7 +48,7 @@ func TestCollect(t *testing.T) {
 		{Title: "期限内タスク", Due: date(t, "2026-10-30")},
 		{Title: "期限外タスク", Due: date(t, "2026-11-10")},
 	})
-	// tasks.yaml のないディレクトリはスキップされる
+	// Directories without tasks.yaml are skipped
 	if err := os.MkdirAll(filepath.Join(eventsDir, "not-an-event"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestMessage(t *testing.T) {
 			t.Errorf("message should contain %q:\n%s", want, msg)
 		}
 	}
-	// announce ラベルのタスクにだけ X intent URL が付く
+	// Only tasks labeled "announce" get an X intent URL
 	if strings.Count(msg, "https://x.com/intent/post?text=") != 1 {
 		t.Errorf("want exactly 1 intent URL:\n%s", msg)
 	}
