@@ -1,0 +1,118 @@
+# 設定リファレンス
+
+コミュニティ固有の要件はすべて 2 つの設定ファイルで表現します。コードの変更は不要です。
+
+| ファイル | 役割 |
+|---|---|
+| `ichiza.yaml` | コミュニティの既定値（開催形態・会場・役割・配信など）。旗揚げ時に `event.yaml` の雛形へ反映される |
+| `templates/lifecycle.yaml` | タスクの雛形。開催日からのオフセットで定義し、旗揚げ時に期限つきタスク（`tasks.yaml` + GitHub Issues）へ展開される |
+
+どちらも省略可能です。`ichiza.yaml` がない場合は内蔵のフォールバック値
+（onsite / organizer 1人 / `templates/lifecycle.yaml`）で動きます。
+
+## ichiza.yaml
+
+リポジトリのルートに置きます。フル構成の例:
+
+```yaml
+lifecycle: templates/lifecycle.yaml   # lifecycle テンプレートのパス
+events_dir: events                    # イベントディレクトリの生成先
+
+defaults:                             # 旗揚げ時の event.yaml 雛形に反映される既定値
+  mode: hybrid                        # onsite | hybrid | online
+  venue:
+    name: 〇〇ビル 3F セミナールーム   # 会場名（省略可）
+    capacity: 30                      # 定員
+    facilities: [wifi, projector, hdmi] # 設備（自由記述のリスト）
+    checkin: 名簿                     # 受付方法
+  roles: [mc, reception, timekeeper, director, afterparty] # 運営役割
+  streaming_role: streaming           # hybrid/online のとき roles に追加される配信担当
+  streaming:
+    platform: streamyard              # 配信サービス
+    camera: [smartphone]              # カメラ機材
+    # youtube_url:                    # アーカイブ URL（開催後に記入）
+    # audio:                          # 音声経路のメモ
+  timetable:                          # タイムテーブルの雛形
+    - { start: "19:00", title: オープニング }
+    - { start: "19:10", title: セッション1, speaker: "" }
+
+notifier:
+  type: slack                         # 通知 adapter
+registry:
+  type: connpass                      # イベント募集ページ adapter
+sns:
+  x:
+    mode: intent                      # X 告知の方式
+```
+
+### トップレベル
+
+| キー | 意味 | 省略時 |
+|---|---|---|
+| `lifecycle` | lifecycle テンプレートのパス | `templates/lifecycle.yaml` |
+| `events_dir` | `events/<slug>/` を生成する場所 | `events` |
+| `defaults` | 旗揚げ時の既定値（下記） | 最小構成 |
+| `notifier.type` | 通知先 adapter。現状 `slack` のみ | `slack` |
+| `registry.type` | 募集ページ adapter。現状 `connpass` のみ | `connpass` |
+| `sns.x.mode` | X 告知の方式。現状 `intent`（投稿画面リンクの半自動方式）のみ | `intent` |
+
+> `notifier` / `registry` / `sns` は現状**宣言のみ**で、値を変えても動作は変わりません
+> （remind の Slack 通知と announce タスクへの X intent リンクが現在の実装です）。
+> discord / doorkeeper / X API など adapter の切り替えは Roadmap 項目です。
+
+### defaults
+
+旗揚げ時に `events/<slug>/event.yaml` の雛形へコピーされる値です。
+**旗揚げ後のイベントには影響しません**（event.yaml が SSoT。個別イベントの変更は
+event.yaml を直接編集します）。
+
+| キー | 意味 |
+|---|---|
+| `mode` | 既定の開催形態。`onsite` / `hybrid` / `online`。Run workflow のフォームで毎回上書き可能 |
+| `venue` | 会場情報。`name` / `capacity` / `facilities`（リスト）/ `checkin`。**online のイベントでは雛形から省かれる** |
+| `roles` | 運営役割のリスト。雛形では「役割名 → 担当者（空欄）」の割り当て表になる。ワンオペなら `[organizer]` で十分 |
+| `streaming_role` | **hybrid / online のとき**だけ `roles` に追加される配信担当の役割名 |
+| `streaming` | 配信設定。`platform` / `camera`（リスト）/ `youtube_url` / `audio`。**onsite のイベントでは雛形から省かれる** |
+| `timetable` | タイムテーブルの雛形。各行は `start`（時刻文字列）/ `title` / `speaker`（省略可） |
+
+## lifecycle.yaml
+
+タスクの雛形です。`tasks` のリストだけを持ち、各タスクは開催日からの
+オフセットで期限を定義します。
+
+```yaml
+tasks:
+  - title: 会場確定・確保          # タスク名（Issue タイトルになる）
+    due: -35d                     # 開催日からのオフセット
+    labels: [venue]               # ラベル
+    modes: [onsite, hybrid]       # このモードのときだけ展開（省略 = 全モード）
+    body: |                       # Issue 本文（省略可。チェックリスト推奨）
+      確認項目:
+      - [ ] 収容人数
+      - [ ] Wi-Fi
+  - { title: イベントページ作成・公開, due: -30d, labels: [announce] }
+  - { title: お礼, due: 1d, labels: [followup] }
+```
+
+| フィールド | 意味 |
+|---|---|
+| `title` | タスク名。Issue は `【〜MM/DD】タスク名` の形式で作られる |
+| `due` | 開催日からのオフセット。`-30d`（30日前）/ `-2w`（2週間前）/ `0d`（当日）/ `3d`(3日後)。`d` = 日、`w` = 週 |
+| `labels` | Issue に付くラベル。**`announce` は特別扱い**: リマインド通知に X の投稿画面を開くリンクが付く |
+| `modes` | 展開条件。指定したモード（`onsite` / `hybrid` / `online`）のイベントのときだけタスク化される。省略時は常に展開 |
+| `body` | Issue 本文（markdown）。当日チェックリストや確認項目を書いておくと Issue がそのまま作業手順書になる |
+
+### 設計のヒント
+
+- **最長オフセットが旗揚げの締切を決めます**。`-35d` のタスクがあるなら、開催日の
+  35 日以上前に旗揚げしないと生成直後から期限超過になります
+- 展開されたタスクは期限順にソートされ、1 イベント = 1 マイルストーンで Issues 化されます
+- 振り返り（KPT）で出た運営改善は lifecycle.yaml に反映すると次回の旗揚げから自動で効きます
+- 定期開催なら「次回イベントの旗揚げ」タスク（`due: 105d` など正のオフセット）を
+  入れておくと、開催サイクル自体がリマインドに乗ります
+
+## 実例
+
+- 最小構成（同梱フォールバック相当）: [`templates/lifecycle.yaml`](../templates/lifecycle.yaml)
+- フル構成（ハイブリッド配信・5役体制・チェックリスト付き Issue・定期開催サイクル）:
+  [`examples/meetup/`](../examples/meetup/)
