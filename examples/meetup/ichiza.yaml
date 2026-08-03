@@ -1,5 +1,5 @@
 # Full-featured config example for a standard hybrid meetup.
-# 5-role staffing (+ streaming), checklist lifecycle, X intent announcements.
+# 6-role staffing (+ streaming), checklist lifecycle, X intent announcements.
 # Copy and adapt to your own community.
 lifecycle: examples/meetup/lifecycle.yaml
 events_dir: events
@@ -9,13 +9,13 @@ defaults:
     capacity: 30
     facilities: [wifi, projector, hdmi]
     checkin: 名簿
-  roles: [mc, reception, timekeeper, director, afterparty]
+  roles: [mc, reception, photographer, timekeeper, director, afterparty]
   streaming_role: streaming
   streaming:
     platform: streamyard
     camera: [smartphone]
   timetable:
-    - { start: "19:00", title: オープニング }
+    - { start: "19:00", title: "オープニング" }
 notifier:
   type: slack
 registry:

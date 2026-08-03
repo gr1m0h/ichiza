@@ -10,6 +10,11 @@
 どちらも省略可能です。`ichiza.yaml` がない場合は内蔵のフォールバック値
 （onsite / organizer 1人 / `templates/lifecycle.yaml`）で動きます。
 
+`lifecycle.yaml` だけ `templates/` 配下にあるのは、設定（`ichiza.yaml`）ではなく
+旗揚げのたびに展開される**テンプレート**であり、用途別に複数置けるためです
+（例: 通常回と LT 大会。`ichiza new --lifecycle templates/lt-night.yaml` または
+`actions/new` の `lifecycle` input で切り替え）。
+
 ## ichiza.yaml
 
 リポジトリのルートに置きます。フル構成の例:
@@ -25,7 +30,7 @@ defaults:                             # 旗揚げ時の event.yaml 雛形に反�
     capacity: 30                      # 定員
     facilities: [wifi, projector, hdmi] # 設備（自由記述のリスト）
     checkin: 名簿                     # 受付方法
-  roles: [mc, reception, timekeeper, director, afterparty] # 運営役割
+  roles: [mc, reception, photographer, timekeeper, director, afterparty] # 運営役割
   streaming_role: streaming           # hybrid/online のとき roles に追加される配信担当
   streaming:
     platform: streamyard              # 配信サービス
@@ -33,8 +38,8 @@ defaults:                             # 旗揚げ時の event.yaml 雛形に反�
     # youtube_url:                    # アーカイブ URL（開催後に記入）
     # audio:                          # 音声経路のメモ
   timetable:                          # タイムテーブルの雛形
-    - { start: "19:00", title: オープニング }
-    - { start: "19:10", title: セッション1, speaker: "" }
+    - { start: "19:00", title: "オープニング" }
+    - { start: "19:10", title: "セッション1", speaker: "" }
 
 notifier:
   type: slack                         # 通知 adapter
@@ -114,5 +119,5 @@ tasks:
 ## 実例
 
 - 最小構成（同梱フォールバック相当）: [`templates/lifecycle.yaml`](../templates/lifecycle.yaml)
-- フル構成（ハイブリッド配信・5役体制・チェックリスト付き Issue・定期開催サイクル）:
+- フル構成（ハイブリッド配信・6役体制・チェックリスト付き Issue・定期開催サイクル）:
   [`examples/meetup/`](../examples/meetup/)
