@@ -2,6 +2,11 @@
 
 Community event operations as Code.
 
+> A serverless, GitHub Actions-native toolkit for running meetups: define an
+> event once (`event.yaml`) and derive announcements, reminders, and task
+> tracking from it. Docs and generated artifacts are currently Japanese-first,
+> as the tool targets the Japanese meetup ecosystem (connpass).
+
 勉強会・ミートアップの運営を「一座の公演」に見立てて、
 イベント定義（event.yaml）から告知・リマインド・タスク管理を派生させる
 ワンオペ向け運営CLIです。サーバー不要、GitHub Actions が唯一のランタイム。
