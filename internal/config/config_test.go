@@ -28,6 +28,9 @@ func TestLoadOverridesFallback(t *testing.T) {
   roles: [mc, reception]
 notifier:
   type: discord
+registry:
+  templates:
+    page: templates/registry/page.md
 `
 	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
@@ -44,6 +47,12 @@ notifier:
 	}
 	if c.Notifier.Type != "discord" {
 		t.Errorf("notifier = %q", c.Notifier.Type)
+	}
+	if c.Registry.Templates.Page != "templates/registry/page.md" {
+		t.Errorf("registry page template = %q", c.Registry.Templates.Page)
+	}
+	if c.Registry.Templates.Speaker != "" {
+		t.Errorf("registry speaker template = %q, want empty (built-in)", c.Registry.Templates.Speaker)
 	}
 	// Unspecified keys keep their fallback values
 	if c.EventsDir != "events" || c.Lifecycle != "templates/lifecycle.yaml" {

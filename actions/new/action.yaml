@@ -40,6 +40,19 @@ runs:
         INPUT_LIFECYCLE: ${{ inputs.lifecycle }}
         INPUT_ISSUES: ${{ inputs.create-issues }}
         GH_TOKEN: ${{ env.GH_TOKEN }}
+    # connpass has no write API: emit a paste-ready page draft instead
+    # (copy the previous event on connpass → paste this → publish)
+    - run: |
+        {
+          echo "## 募集ページ原稿（コピペ用）"
+          echo ""
+          echo '````markdown'
+          ichiza registry --slug "$INPUT_SLUG"
+          echo '````'
+        } >> "$GITHUB_STEP_SUMMARY"
+      shell: bash
+      env:
+        INPUT_SLUG: ${{ inputs.slug }}
     - run: |
         git config user.name "ichiza[bot]"
         git config user.email "ichiza-bot@users.noreply.github.com"

@@ -51,8 +51,9 @@ Settings で上記 2, 3 を設定）。手順の詳細と日々の運用は
 ```text
 gr1m0h/ichiza          # 本体: CLI + composite actions
 ├── actions/setup      # CLI インストール
-├── actions/new        # 旗揚げ（scaffold → PR + Issues）
-└── actions/remind     # 期限リマインド（cron）
+├── actions/new        # 旗揚げ（scaffold → PR + Issues + 募集ページ原稿）
+├── actions/remind     # 期限リマインド（cron）
+└── actions/registry   # 募集ページ原稿の再生成（登壇者追加時など）
 
 gr1m0h/ichiza-starter  # コミュニティが複製するテンプレート（template repository）
 ├── .github/workflows/ichiza-new.yml     # Run workflow ボタン
@@ -81,6 +82,9 @@ $ ichiza remind                   # 期限超過 + 7日以内のタスクを表�
 $ ichiza remind --notify slack    # SLACK_WEBHOOK_URL に通知（cron 用）
 $ ichiza speakers                 # 登壇者 Issue Form → connpass 掲載文
 $ ichiza speakers --apply --slug tokyo-3   # event.yaml にも反映
+
+$ ichiza registry --slug tokyo-3       # 募集ページ原稿を全文生成（コピペ用）
+$ ichiza registry --speaker-issue 12   # 追加登壇者のセクションだけ生成
 ```
 
 生成物:
@@ -119,6 +123,9 @@ ichiza の設計原則です。
 
 - [x] `ichiza remind` — cron からの期限チェック + Slack 通知（X intent URL 添付）
 - [x] `ichiza speakers` — GitHub Issue Forms から登壇者情報を収集・connpass 掲載文生成
+- [x] `ichiza registry` — 募集ページ原稿の生成（connpass に書き込み API がないため
+      「コピーして新規作成 → ペースト」まで人間の作業を圧縮。テンプレは運営リポジトリ側で
+      カスタマイズ可能、旗揚げ時と登壇者追加時に job summary へ出力）
 - [ ] `ichiza watch` — connpass API v2 で申込数ウォッチ（adapter 化して他サービス対応）
 - [ ] `ichiza draft` — 告知記事・開催記事・司会資料の下書き生成
 - [ ] `ichiza kpt` — アンケート集計 → KPT 下書き

@@ -45,6 +45,9 @@ notifier:
   type: slack                         # 通知 adapter
 registry:
   type: connpass                      # イベント募集ページ adapter
+  templates:                          # 募集ページ原稿のテンプレ（省略時は内蔵デフォルト）
+    page: templates/registry/page.md
+    speaker: templates/registry/speaker.md
 sns:
   x:
     mode: intent                      # X 告知の方式
@@ -59,11 +62,13 @@ sns:
 | `defaults` | 旗揚げ時の既定値（下記） | 最小構成 |
 | `notifier.type` | 通知先 adapter。現状 `slack` のみ | `slack` |
 | `registry.type` | 募集ページ adapter。現状 `connpass` のみ | `connpass` |
+| `registry.templates.page` | 募集ページ原稿（全文）のテンプレパス | 内蔵デフォルト |
+| `registry.templates.speaker` | 登壇者1名分セクションのテンプレパス | 内蔵デフォルト |
 | `sns.x.mode` | X 告知の方式。現状 `intent`（投稿画面リンクの半自動方式）のみ | `intent` |
 
-> `notifier` / `registry` / `sns` は現状**宣言のみ**で、値を変えても動作は変わりません
-> （remind の Slack 通知と announce タスクへの X intent リンクが現在の実装です）。
-> discord / doorkeeper / X API など adapter の切り替えは Roadmap 項目です。
+> `notifier.type` / `registry.type` / `sns` は現状**宣言のみ**で、値を変えても動作は変わりません
+> （remind の Slack 通知・announce タスクへの X intent リンク・connpass 形式の原稿生成が
+> 現在の実装です）。discord / doorkeeper / X API など adapter の切り替えは Roadmap 項目です。
 
 ### defaults
 
@@ -115,6 +120,46 @@ tasks:
 - 振り返り（KPT）で出た運営改善は lifecycle.yaml に反映すると次回の旗揚げから自動で効きます
 - 定期開催なら「次回イベントの旗揚げ」タスク（`due: 105d` など正のオフセット）を
   入れておくと、開催サイクル自体がリマインドに乗ります
+
+## 募集ページ原稿テンプレート（registry.templates）
+
+connpass には書き込み API がないため、ichiza は「connpass の**コピーして新規作成** →
+生成された原稿をペースト → 公開」まで人間の作業を圧縮するアプローチを取ります。
+原稿は `ichiza registry` が生成し、GitHub Actions では job summary に出力されます:
+
+- 旗揚げ時（`actions/new`）: event.yaml から**全文**を生成
+- 登壇者 Issue 追加時（`actions/registry` + `speaker-issue` input）: **その登壇者の
+  セクションだけ**を生成（公開済みページへの追記用）
+
+文面はコミュニティごとに違うため、テンプレートは運営リポジトリ側
+（ichiza-starter 由来）に置き、`registry.templates` でパスを指定します。
+省略時は内蔵のニュートラルなデフォルトが使われます。
+形式は Go の [text/template](https://pkg.go.dev/text/template) を使った
+markdown / テキストです。
+
+### page テンプレートの変数
+
+| 変数 | 内容 |
+|---|---|
+| `{{.Title}}` / `{{.Slug}}` / `{{.Mode}}` | イベント基本情報 |
+| `{{.Date}}` | `YYYY-MM-DD` |
+| `{{.DateJP}}` | `2026年11月28日（土）`（parse 不能時は `.Date` のまま） |
+| `{{.Venue}}` | 会場（`.Name` / `.Capacity` / `.Facilities` / `.Checkin`。ないときは nil） |
+| `{{.Streaming}}` | 配信（`.Platform` / `.YouTubeURL` など。ないときは nil） |
+| `{{.ConnpassURL}}` | event.yaml の `connpass_url` |
+| `{{.TimetableTable}}` | タイムテーブルの markdown 表（合成済み） |
+| `{{.SpeakersSection}}` | speaker テンプレートを全登壇者に適用して連結したもの |
+| `{{.Timetable}}` / `{{.Speakers}}` | 生データ（`range` で独自レイアウトを組む場合） |
+
+### speaker テンプレートの変数
+
+| 変数 | 内容 |
+|---|---|
+| `{{.Handle}}` / `{{.SNS}}` / `{{.Bio}}` / `{{.SessionTitle}}` / `{{.Remote}}` | Issue Form から収集した生データ |
+| `{{.DisplayName}}` | Handle + リモート登壇の注記 |
+| `{{.DisplaySessionTitle}}` | SessionTitle（未定なら「タイトル未定」） |
+
+例: [`examples/meetup/registry/`](../examples/meetup/registry/)
 
 ## 実例
 

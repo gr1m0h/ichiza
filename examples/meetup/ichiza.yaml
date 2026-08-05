@@ -20,6 +20,9 @@ notifier:
   type: slack
 registry:
   type: connpass
+  templates: # 募集ページ原稿のテンプレ（省略時は内蔵デフォルト）
+    page: examples/meetup/registry/page.md
+    speaker: examples/meetup/registry/speaker.md
 sns:
   x:
     mode: intent

@@ -11,6 +11,7 @@ import (
 	"github.com/gr1m0h/ichiza/internal/config"
 	"github.com/gr1m0h/ichiza/internal/event"
 	"github.com/gr1m0h/ichiza/internal/notify"
+	"github.com/gr1m0h/ichiza/internal/registry"
 	"github.com/gr1m0h/ichiza/internal/remind"
 	"github.com/gr1m0h/ichiza/internal/scaffold"
 	"github.com/gr1m0h/ichiza/internal/speaker"
@@ -23,6 +24,7 @@ Usage:
                    [--mode onsite|hybrid|online] [--lifecycle <path>] [--issues]
   ichiza remind    [--notify stdout|slack] [--days 7] [--today <YYYY-MM-DD>]
   ichiza speakers  [--label speakers] [--apply --slug <slug>]
+  ichiza registry  --slug <slug> | --speaker-issue <number>
   ichiza help
 
 Coming soon: watch, draft, kpt
@@ -41,6 +43,8 @@ func main() {
 		err = cmdRemind(os.Args[2:])
 	case "speakers":
 		err = cmdSpeakers(os.Args[2:])
+	case "registry":
+		err = cmdRegistry(os.Args[2:])
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
@@ -138,6 +142,49 @@ func cmdRemind(args []string) error {
 		fmt.Printf("remind: %d event(s) notified to slack\n", len(digests))
 	default:
 		return fmt.Errorf("invalid --notify %q (stdout|slack)", *dest)
+	}
+	return nil
+}
+
+// cmdRegistry renders the registration page draft (connpass 等) for
+// copy-paste: the full page at `new` time, or a single speaker section
+// when a speaker issue is added.
+func cmdRegistry(args []string) error {
+	fs := flag.NewFlagSet("registry", flag.ExitOnError)
+	cfgPath := fs.String("config", "ichiza.yaml", "root config path")
+	slug := fs.String("slug", "", "render the full page draft for events/<slug>")
+	issue := fs.Int("speaker-issue", 0, "render one speaker section from issue #N (via gh)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		return err
+	}
+	tpl := cfg.Registry.Templates
+	switch {
+	case *slug != "" && *issue == 0:
+		e, err := event.Load(filepath.Join(cfg.EventsDir, *slug, "event.yaml"))
+		if err != nil {
+			return err
+		}
+		out, err := registry.RenderPage(e, tpl.Page, tpl.Speaker)
+		if err != nil {
+			return err
+		}
+		fmt.Print(out)
+	case *slug == "" && *issue != 0:
+		is, err := speaker.FetchOne(*issue)
+		if err != nil {
+			return err
+		}
+		out, err := registry.RenderSpeaker(speaker.Parse(is.Body), tpl.Speaker)
+		if err != nil {
+			return err
+		}
+		fmt.Print(out)
+	default:
+		return fmt.Errorf("exactly one of --slug / --speaker-issue is required")
 	}
 	return nil
 }

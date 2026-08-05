@@ -1,0 +1,39 @@
+name: ichiza registry
+description: Render the registration page draft (full page or one speaker section) to the job summary for copy-paste
+inputs:
+  slug:
+    description: render the full page draft for events/<slug>
+    default: ""
+  speaker-issue:
+    description: "render one speaker section from issue #N (for issue-triggered workflows)"
+    default: ""
+  version:
+    description: ichiza version
+    default: latest
+runs:
+  using: composite
+  steps:
+    - uses: gr1m0h/ichiza/actions/setup@v0
+      with:
+        version: ${{ inputs.version }}
+    # Pass inputs via env instead of expanding them into the shell (script injection guard)
+    - run: |
+        if [ -n "$INPUT_SLUG" ]; then
+          heading="募集ページ原稿（コピペ用）"
+          draft=$(ichiza registry --slug "$INPUT_SLUG")
+        else
+          heading="登壇者セクション追記分（コピペ用）"
+          draft=$(ichiza registry --speaker-issue "$INPUT_ISSUE")
+        fi
+        {
+          echo "## ${heading}"
+          echo ""
+          echo '````markdown'
+          echo "$draft"
+          echo '````'
+        } >> "$GITHUB_STEP_SUMMARY"
+      shell: bash
+      env:
+        INPUT_SLUG: ${{ inputs.slug }}
+        INPUT_ISSUE: ${{ inputs.speaker-issue }}
+        GH_TOKEN: ${{ env.GH_TOKEN }}

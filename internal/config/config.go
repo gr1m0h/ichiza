@@ -17,7 +17,7 @@ type Config struct {
 	EventsDir string   `yaml:"events_dir"`
 	Defaults  Defaults `yaml:"defaults"`
 	Notifier  Adapter  `yaml:"notifier"`
-	Registry  Adapter  `yaml:"registry"`
+	Registry  Registry `yaml:"registry"`
 }
 
 type Defaults struct {
@@ -34,6 +34,18 @@ type Adapter struct {
 	Type string `yaml:"type"`
 }
 
+// Registry configures the event registration page adapter and the
+// community-editable draft templates (empty = built-in defaults).
+type Registry struct {
+	Type      string            `yaml:"type"`
+	Templates RegistryTemplates `yaml:"templates"`
+}
+
+type RegistryTemplates struct {
+	Page    string `yaml:"page"`
+	Speaker string `yaml:"speaker"`
+}
+
 // Fallback returns the zero-config behavior: neutral, minimal defaults.
 func Fallback() *Config {
 	return &Config{
@@ -45,7 +57,7 @@ func Fallback() *Config {
 			StreamingRole: "streaming",
 		},
 		Notifier: Adapter{Type: "slack"},
-		Registry: Adapter{Type: "connpass"},
+		Registry: Registry{Type: "connpass"},
 	}
 }
 

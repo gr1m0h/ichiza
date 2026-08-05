@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/gr1m0h/ichiza/internal/event"
@@ -31,6 +32,21 @@ func Fetch(label string) ([]Issue, error) {
 		return nil, fmt.Errorf("parse gh output: %w", err)
 	}
 	return issues, nil
+}
+
+// FetchOne reads a single issue by number — used when a speaker issue is
+// added and only that speaker's registry section should be rendered.
+func FetchOne(number int) (Issue, error) {
+	out, err := exec.Command("gh", "issue", "view", strconv.Itoa(number),
+		"--json", "title,url,body").Output()
+	if err != nil {
+		return Issue{}, fmt.Errorf("gh issue view %d: %w", number, err)
+	}
+	var is Issue
+	if err := json.Unmarshal(out, &is); err != nil {
+		return Issue{}, fmt.Errorf("parse gh output: %w", err)
+	}
+	return is, nil
 }
 
 // Parse extracts a Speaker from the markdown body GitHub renders for an
