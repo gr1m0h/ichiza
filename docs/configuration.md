@@ -125,11 +125,13 @@ tasks:
 
 connpass には書き込み API がないため、ichiza は「connpass の**コピーして新規作成** →
 生成された原稿をペースト → 公開」まで人間の作業を圧縮するアプローチを取ります。
-原稿は `ichiza registry` が生成し、GitHub Actions では job summary に出力されます:
+原稿は `ichiza registry` が event.yaml（SSoT）から生成し、GitHub Actions では
+job summary に出力されます:
 
-- 旗揚げ時（`actions/new`）: event.yaml から**全文**を生成
-- 登壇者 Issue 追加時（`actions/registry` + `speaker-issue` input）: **その登壇者の
-  セクションだけ**を生成（公開済みページへの追記用）
+- 旗揚げ時（`actions/new`）: 雛形の内容で全文を生成
+- event.yaml 更新後（`actions/registry` を Run workflow で実行）: 全文を再生成。
+  登壇者を追加したときも、公開済みページの本文へ**全文を貼り直す**運用が
+  差分追記より簡単で崩れません（connpass の編集は本文の全置換のため）
 
 文面はコミュニティごとに違うため、テンプレートは運営リポジトリ側
 （ichiza-starter 由来）に置き、`registry.templates` でパスを指定します。
@@ -155,7 +157,7 @@ markdown / テキストです。
 
 | 変数 | 内容 |
 |---|---|
-| `{{.Handle}}` / `{{.SNS}}` / `{{.Bio}}` / `{{.SessionTitle}}` / `{{.Remote}}` | Issue Form から収集した生データ |
+| `{{.Handle}}` / `{{.SNS}}` / `{{.Bio}}` / `{{.SessionTitle}}` / `{{.Remote}}` | event.yaml の `speakers:` の生データ |
 | `{{.DisplayName}}` | Handle + リモート登壇の注記 |
 | `{{.DisplaySessionTitle}}` | SessionTitle（未定なら「タイトル未定」） |
 

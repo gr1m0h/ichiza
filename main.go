@@ -14,7 +14,6 @@ import (
 	"github.com/gr1m0h/ichiza/internal/registry"
 	"github.com/gr1m0h/ichiza/internal/remind"
 	"github.com/gr1m0h/ichiza/internal/scaffold"
-	"github.com/gr1m0h/ichiza/internal/speaker"
 )
 
 const usage = `ichiza — community event operations as Code
@@ -23,8 +22,7 @@ Usage:
   ichiza new       --slug <slug> --title <title> --date <YYYY-MM-DD>
                    [--mode onsite|hybrid|online] [--lifecycle <path>] [--issues]
   ichiza remind    [--notify stdout|slack] [--days 7] [--today <YYYY-MM-DD>]
-  ichiza speakers  [--label speakers] [--apply --slug <slug>]
-  ichiza registry  --slug <slug> | --speaker-issue <number>
+  ichiza registry  --slug <slug>
   ichiza help
 
 Coming soon: watch, draft, kpt
@@ -41,8 +39,6 @@ func main() {
 		err = cmdNew(os.Args[2:])
 	case "remind":
 		err = cmdRemind(os.Args[2:])
-	case "speakers":
-		err = cmdSpeakers(os.Args[2:])
 	case "registry":
 		err = cmdRegistry(os.Args[2:])
 	case "help", "-h", "--help":
@@ -147,89 +143,30 @@ func cmdRemind(args []string) error {
 }
 
 // cmdRegistry renders the registration page draft (connpass 等) for
-// copy-paste: the full page at `new` time, or a single speaker section
-// when a speaker issue is added.
+// copy-paste. Speakers live in event.yaml (the SSoT) — after adding one,
+// re-render the full page and paste it over the published body.
 func cmdRegistry(args []string) error {
 	fs := flag.NewFlagSet("registry", flag.ExitOnError)
 	cfgPath := fs.String("config", "ichiza.yaml", "root config path")
 	slug := fs.String("slug", "", "render the full page draft for events/<slug>")
-	issue := fs.Int("speaker-issue", 0, "render one speaker section from issue #N (via gh)")
 	if err := fs.Parse(args); err != nil {
 		return err
-	}
-	cfg, err := config.Load(*cfgPath)
-	if err != nil {
-		return err
-	}
-	tpl := cfg.Registry.Templates
-	switch {
-	case *slug != "" && *issue == 0:
-		e, err := event.Load(filepath.Join(cfg.EventsDir, *slug, "event.yaml"))
-		if err != nil {
-			return err
-		}
-		out, err := registry.RenderPage(e, tpl.Page, tpl.Speaker)
-		if err != nil {
-			return err
-		}
-		fmt.Print(out)
-	case *slug == "" && *issue != 0:
-		is, err := speaker.FetchOne(*issue)
-		if err != nil {
-			return err
-		}
-		out, err := registry.RenderSpeaker(speaker.Parse(is.Body), tpl.Speaker)
-		if err != nil {
-			return err
-		}
-		fmt.Print(out)
-	default:
-		return fmt.Errorf("exactly one of --slug / --speaker-issue is required")
-	}
-	return nil
-}
-
-func cmdSpeakers(args []string) error {
-	fs := flag.NewFlagSet("speakers", flag.ExitOnError)
-	cfgPath := fs.String("config", "ichiza.yaml", "root config path")
-	label := fs.String("label", "speakers", "issue label to collect")
-	slug := fs.String("slug", "", "event slug (required with --apply)")
-	apply := fs.Bool("apply", false, "write speakers into events/<slug>/event.yaml")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	issues, err := speaker.Fetch(*label)
-	if err != nil {
-		return err
-	}
-	if len(issues) == 0 {
-		fmt.Printf("speakers: label %q の open issue はありません\n", *label)
-		return nil
-	}
-	speakers := make([]event.Speaker, 0, len(issues))
-	for _, is := range issues {
-		speakers = append(speakers, speaker.Parse(is.Body))
-	}
-	fmt.Print(speaker.Connpass(speakers))
-	if !*apply {
-		return nil
 	}
 	if *slug == "" {
-		return fmt.Errorf("--apply requires --slug")
+		return fmt.Errorf("--slug is required")
 	}
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
 		return err
 	}
-	path := filepath.Join(cfg.EventsDir, *slug, "event.yaml")
-	e, err := event.Load(path)
+	e, err := event.Load(filepath.Join(cfg.EventsDir, *slug, "event.yaml"))
 	if err != nil {
 		return err
 	}
-	e.Speakers = speakers
-	if err := e.Save(path); err != nil {
+	out, err := registry.RenderPage(e, cfg.Registry.Templates.Page, cfg.Registry.Templates.Speaker)
+	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "speakers: updated %s (%d speakers)\n", path, len(speakers))
+	fmt.Print(out)
 	return nil
 }

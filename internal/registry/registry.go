@@ -85,8 +85,8 @@ func RenderPage(e *event.Event, pagePath, speakerPath string) (string, error) {
 	return render("page", tpl, d)
 }
 
-// RenderSpeaker renders a single speaker section — used inside RenderPage
-// and standalone when a speaker issue is added.
+// RenderSpeaker renders a single speaker section for RenderPage's
+// SpeakersSection.
 func RenderSpeaker(s event.Speaker, path string) (string, error) {
 	tpl, err := load(path, "templates/speaker.md")
 	if err != nil {
