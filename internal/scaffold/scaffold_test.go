@@ -155,22 +155,25 @@ func TestCreateIssues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 1 milestone + 1 issue per task
-	if len(calls) != 1+len(res.Tasks) {
-		t.Fatalf("got %d gh calls, want %d: %v", len(calls), 1+len(res.Tasks), calls)
+	// 1 milestone + 1 label (announce) + 1 issue per task
+	if len(calls) != 2+len(res.Tasks) {
+		t.Fatalf("got %d gh calls, want %d: %v", len(calls), 2+len(res.Tasks), calls)
 	}
 	if calls[0][1] != "api" || !strings.Contains(strings.Join(calls[0], " "), "milestones") {
 		t.Errorf("first call should create milestone: %v", calls[0])
 	}
-	issue := strings.Join(calls[1], " ")
+	if got := strings.Join(calls[1], " "); got != "gh label create announce" {
+		t.Errorf("second call should create label: %v", calls[1])
+	}
+	issue := strings.Join(calls[2], " ")
 	if !strings.Contains(issue, "issue create") {
-		t.Errorf("second call should create issue: %v", calls[1])
+		t.Errorf("third call should create issue: %v", calls[2])
 	}
 	if !strings.Contains(issue, "【〜10/23】告知") {
-		t.Errorf("issue title should embed deadline: %v", calls[1])
+		t.Errorf("issue title should embed deadline: %v", calls[2])
 	}
 	if !strings.Contains(issue, "--label announce") {
-		t.Errorf("issue should carry labels: %v", calls[1])
+		t.Errorf("issue should carry labels: %v", calls[2])
 	}
 }
 

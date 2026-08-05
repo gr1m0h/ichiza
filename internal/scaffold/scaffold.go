@@ -111,6 +111,18 @@ func createIssues(e *event.Event, tasks []lifecycle.Task) error {
 		"-f", "due_on="+e.Event.Date+"T00:00:00Z",
 	).Run()
 
+	// gh issue create rejects labels that don't exist in the repo,
+	// so create them up front. Best effort: label may already exist.
+	created := map[string]bool{}
+	for _, t := range tasks {
+		for _, l := range t.Labels {
+			if !created[l] {
+				created[l] = true
+				_ = execCommand("gh", "label", "create", l).Run()
+			}
+		}
+	}
+
 	for _, t := range tasks {
 		args := []string{
 			"issue", "create",
