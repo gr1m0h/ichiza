@@ -152,6 +152,10 @@ markdown / テキストです。
   remind と同じ Slack Webhook に送れます（`actions/watch` を cron に載せる想定）
 - `connpass_url` 未設定のイベントは通知内で ⚠️ として報告されます
   （静かに落とすと「全部見えている」ように誤読されるため）
+- **公開中のイベントが 1 件もない間は実質休止**: cron は動きますが Slack へは
+  送らず、実行ログにだけ状況を残します（公開待ちの ⚠️ を毎朝流しても
+  remind の「connpassページ公開」タスクと重複するだけのため）。
+  `connpass_url` を event.yaml に追記した翌朝から自動で通知が始まります
 
 ### page テンプレートの変数
 

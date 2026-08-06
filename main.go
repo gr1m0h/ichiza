@@ -218,6 +218,15 @@ func cmdWatch(args []string) error {
 	case "stdout":
 		fmt.Println(msg)
 	case "slack":
+		// Nothing published yet (connpass_url all unset) → dormant: keep the
+		// report in the run log but stay silent on Slack. remind already
+		// nags about the "connpassページ公開" task, so a daily ⚠️ here would
+		// only duplicate it.
+		if len(digests) == 0 {
+			fmt.Println(msg)
+			fmt.Println("watch: 公開中のイベントがないため Slack 通知をスキップ")
+			return nil
+		}
 		url := os.Getenv("SLACK_WEBHOOK_URL")
 		if url == "" {
 			return fmt.Errorf("--notify slack requires SLACK_WEBHOOK_URL")
