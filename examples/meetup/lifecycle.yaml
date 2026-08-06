@@ -22,7 +22,7 @@ tasks:
     labels: [speakers]
     body: |
       - [ ] 登壇者確定・掲載情報の依頼（お名前 / SNS / 経歴 / セッションタイトル / 登壇形態）
-      - [ ] 受け取った情報を event.yaml の speakers に追記（募集ページ原稿に反映される）
+      - [ ] 受け取った情報を event.yaml の speakers に追記（募集ページ本文に反映される）
       - [ ] セッション内容・進行の共有もこのスレッドで継続する
   - title: イベントページ作成・公開
     due: -30d
@@ -143,12 +143,12 @@ tasks:
     body: |
       当日に立てた Issue + アンケート結果を材料に Keep / Problem / Try を整理する。
       Try のうち運営プロセスの改善は templates/lifecycle.yaml に反映すると
-      次回の旗揚げから自動で効く。
+      次回のイベント作成から自動で効く。
 
   # --- Toward the next event (adjust to your cadence) ---
-  - title: 次回イベントの旗揚げ（Run workflow）
+  - title: 次回イベントの作成（Run workflow）
     due: 105d
     labels: [ops]
     body: |
       開催周期に合わせて due を調整する（105d ≒ 3.5ヶ月後 = 4ヶ月周期の例）。
-      開催日は旗揚げ日から 5 週間以上先に置くこと（最長オフセット -35d のため）。
+      開催日はイベント作成日から 5 週間以上先に置くこと（最長オフセット -35d のため）。
