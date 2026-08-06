@@ -46,7 +46,7 @@ Settings で上記 2, 3 を設定）。手順の詳細と日々の運用は
    期限つき GitHub Issues + マイルストーンが生成される
 3. event.yaml に会場・タイムテーブルを追記して PR をマージ — 以降はこれが SSoT
 
-## 配布モデル（tfaction スタイル）
+## 配布モデル
 
 ```text
 gr1m0h/ichiza          # 本体: CLI + composite actions
@@ -64,7 +64,7 @@ gr1m0h/ichiza-starter  # コミュニティが複製するテンプレート（t
 └── templates/registry/                  # 募集ページ原稿の文面テンプレ
 ```
 
-バージョンは `gr1m0h/ichiza/actions/*@v0` のタグ参照で固定、Renovate で追従します。
+バージョンは `gr1m0h/ichiza/actions/*@v0` のタグ参照で固定します。
 `actions/new` は PR 作成が許可されていないリポジトリでも失敗せず、job summary に
 手動作成リンク（タイトル・本文入力済み）と設定手順を表示します。
 
