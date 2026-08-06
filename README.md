@@ -1,25 +1,17 @@
 # ichiza（一座）
 
-Community event operations as Code.
+Community event operations as Code — a CLI & GitHub Actions platform.
 
-> A serverless, GitHub Actions-native toolkit for running meetups: define an
+> A serverless CLI & GitHub Actions platform for running meetups: define an
 > event once (`event.yaml`) and derive announcements, reminders, and task
 > tracking from it. Docs and generated artifacts are currently Japanese-first,
 > as the tool targets the Japanese meetup ecosystem (connpass).
 
-勉強会・ミートアップの運営を「一座の公演」に見立てて、
-イベント定義（event.yaml）から告知・リマインド・タスク管理を派生させる
-ワンオペ向け運営CLIです。サーバー不要、GitHub Actions が唯一のランタイム。
+勉強会・ミートアップ運営の CLI & GitHub Actions プラットフォーム。
+イベント定義（event.yaml）から告知・リマインド・タスク管理を派生させます。
 
-## 思想
+## はじめる
 
-- **Single Source of Truth**: すべては `events/<slug>/event.yaml` から派生する
-- **判断だけを人間に残す**: 記憶と定型作業はシステムへ、意思決定だけ運営へ
-- **サーバーを持たない**: 運用対象を増やさないことが持続可能性
-
-## はじめる（5分）
-
-ichiza は「インストールする CLI」ではなく「導入する GitHub Actions プラットフォーム」です。
 [ichiza-starter](https://github.com/gr1m0h/ichiza-starter) から運営リポジトリを作って始めます。
 
 ```console
@@ -34,14 +26,14 @@ $ gh api -X PUT repos/<owner>/<repo>/actions/permissions/workflow \
 $ gh secret set SLACK_WEBHOOK_URL --repo <owner>/<repo>
 ```
 
-ブラウザだけでも同じことができます（starter の **Use this template** →
+ブラウザでも同じことができます（starter の **Use this template** →
 Settings で上記 2, 3 を設定）。手順の詳細と日々の運用は
 [starter の README](https://github.com/gr1m0h/ichiza-starter) を参照してください。
 
 最初のイベント旗揚げ:
 
 1. 運営リポジトリの Actions タブ → **ichiza new** → **Run workflow**
-   （slug / title / date / mode を入力。スマホの GitHub アプリからも実行可能）
+   （slug / title / date / mode を入力）
 2. `events/<slug>/event.yaml` + `tasks.yaml` の PR と、開催日から逆算した
    期限つき GitHub Issues + マイルストーンが生成される
 3. event.yaml に会場・タイムテーブルを追記して PR をマージ — 以降はこれが SSoT
@@ -64,7 +56,6 @@ gr1m0h/ichiza-starter  # コミュニティが複製するテンプレート（t
 └── templates/registry/                  # 募集ページ原稿の文面テンプレ
 ```
 
-バージョンは `gr1m0h/ichiza/actions/*@v0` のタグ参照で固定します。
 `actions/new` は PR 作成が許可されていないリポジトリでも失敗せず、job summary に
 手動作成リンク（タイトル・本文入力済み）と設定手順を表示します。
 
@@ -97,6 +88,11 @@ $ ichiza watch --notify slack     # SLACK_WEBHOOK_URL に通知（cron 用）
 `remind` は announce ラベルのタスクに X の投稿画面を開く intent URL を添えるので、
 通知からワンタップで告知ポストまで済む（`sns.x.mode: intent`）。
 
+`registry` は connpass に書き込み API がないため「コピーして新規作成 → ペースト」まで
+人間の作業を圧縮する設計。文面テンプレは運営リポジトリ側でカスタマイズできます。
+`watch` の申込数取得は `registry.type` で adapter を選択し、connpass 以外のサービスは
+Fetcher adapter の追加で対応します。
+
 ## Lifecycle テンプレート
 
 タスクは開催日からのオフセットで定義します。`modes` を持つタスクは
@@ -122,12 +118,8 @@ ichiza の設計原則です。
 
 ## Roadmap
 
-- [x] `ichiza remind` — cron からの期限チェック + Slack 通知（X intent URL 添付）
-- [x] `ichiza registry` — 募集ページ原稿の生成（connpass に書き込み API がないため
-      「コピーして新規作成 → ペースト」まで人間の作業を圧縮。登壇者を含め event.yaml が
-      SSoT。テンプレは運営リポジトリ側でカスタマイズ可能、job summary へ出力）
-- [x] `ichiza watch` — connpass API v2 で申込数ウォッチ（`registry.type` の adapter 選択、
-      X-API-Key 認証 + `CONNPASS_API_KEY`。申込数 / 定員充足率 / 補欠 / 受付状態を
-      stdout or Slack へ。他サービスは Fetcher adapter の追加で対応）
+未実装の機能のみ載せています。実装が完了した項目はここから削除し、
+機能として本文と [docs/configuration.md](docs/configuration.md) に記載します。
+
 - [ ] `ichiza draft` — 告知記事・開催記事・司会資料の下書き生成
 - [ ] `ichiza kpt` — アンケート集計 → KPT 下書き
