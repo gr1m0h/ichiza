@@ -14,6 +14,7 @@ import (
 	"github.com/gr1m0h/ichiza/internal/registry"
 	"github.com/gr1m0h/ichiza/internal/remind"
 	"github.com/gr1m0h/ichiza/internal/scaffold"
+	"github.com/gr1m0h/ichiza/internal/watch"
 )
 
 const usage = `ichiza — community event operations as Code
@@ -23,9 +24,11 @@ Usage:
                    [--mode onsite|hybrid|online] [--lifecycle <path>] [--issues]
   ichiza remind    [--notify stdout|slack] [--days 7] [--today <YYYY-MM-DD>]
   ichiza registry  --slug <slug>
+  ichiza watch     [--notify stdout|slack] [--slug <slug>] [--today <YYYY-MM-DD>]
+                   (CONNPASS_API_KEY required)
   ichiza help
 
-Coming soon: watch, draft, kpt
+Coming soon: draft, kpt
 `
 
 func main() {
@@ -41,6 +44,8 @@ func main() {
 		err = cmdRemind(os.Args[2:])
 	case "registry":
 		err = cmdRegistry(os.Args[2:])
+	case "watch":
+		err = cmdWatch(os.Args[2:])
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
@@ -168,5 +173,61 @@ func cmdRegistry(args []string) error {
 		return err
 	}
 	fmt.Print(out)
+	return nil
+}
+
+// cmdWatch reports live registration counts (申込数) for upcoming events
+// via the registry adapter (connpass API v2). Read-only: connpass has no
+// write API, so watch closes the loop that registry's copy-paste opens.
+func cmdWatch(args []string) error {
+	fs := flag.NewFlagSet("watch", flag.ExitOnError)
+	cfgPath := fs.String("config", "ichiza.yaml", "root config path")
+	dest := fs.String("notify", "stdout", "stdout | slack (slack reads SLACK_WEBHOOK_URL)")
+	slug := fs.String("slug", "", "watch only events/<slug> (past events included)")
+	today := fs.String("today", "", "override today for dry runs (YYYY-MM-DD)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	now := time.Now()
+	if *today != "" {
+		var err error
+		if now, err = time.Parse("2006-01-02", *today); err != nil {
+			return fmt.Errorf("--today: %w", err)
+		}
+	}
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		return err
+	}
+	fetcher, err := watch.New(cfg.Registry.Type, os.Getenv("CONNPASS_API_KEY"))
+	if err != nil {
+		return err
+	}
+	digests, skipped, err := watch.Collect(watch.Options{
+		EventsDir: cfg.EventsDir, Now: now, Slug: *slug,
+	}, fetcher)
+	if err != nil {
+		return err
+	}
+	if len(digests) == 0 && len(skipped) == 0 {
+		fmt.Println("watch: ウォッチ対象のイベントはありません")
+		return nil
+	}
+	msg := watch.Message(now, digests, skipped)
+	switch *dest {
+	case "stdout":
+		fmt.Println(msg)
+	case "slack":
+		url := os.Getenv("SLACK_WEBHOOK_URL")
+		if url == "" {
+			return fmt.Errorf("--notify slack requires SLACK_WEBHOOK_URL")
+		}
+		if err := notify.Slack(url, msg); err != nil {
+			return err
+		}
+		fmt.Printf("watch: %d event(s) notified to slack\n", len(digests))
+	default:
+		return fmt.Errorf("invalid --notify %q (stdout|slack)", *dest)
+	}
 	return nil
 }

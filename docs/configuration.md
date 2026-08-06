@@ -66,9 +66,10 @@ sns:
 | `registry.templates.speaker` | 登壇者1名分セクションのテンプレパス | 内蔵デフォルト |
 | `sns.x.mode` | X 告知の方式。現状 `intent`（投稿画面リンクの半自動方式）のみ | `intent` |
 
-> `notifier.type` / `registry.type` / `sns` は現状**宣言のみ**で、値を変えても動作は変わりません
-> （remind の Slack 通知・announce タスクへの X intent リンク・connpass 形式の原稿生成が
-> 現在の実装です）。discord / doorkeeper / X API など adapter の切り替えは Roadmap 項目です。
+> `notifier.type` / `sns` は現状**宣言のみ**で、値を変えても動作は変わりません
+> （remind の Slack 通知・announce タスクへの X intent リンクが現在の実装です）。
+> `registry.type` は `ichiza watch` の adapter 選択に使われます（現状 `connpass` のみ。
+> それ以外の値はエラー）。discord / doorkeeper / X API など adapter の追加は Roadmap 項目です。
 
 ### defaults
 
@@ -138,6 +139,19 @@ job summary に出力されます:
 省略時は内蔵のニュートラルなデフォルトが使われます。
 形式は Go の [text/template](https://pkg.go.dev/text/template) を使った
 markdown / テキストです。
+
+## 申込数ウォッチ（ichiza watch）
+
+公開後の申込状況は `ichiza watch` が connpass API v2 で取得します
+（読み取り専用。API キーは connpass サポートへの申請制で、環境変数
+`CONNPASS_API_KEY` で渡します）:
+
+- 対象は `events/*/event.yaml` のうち **開催日が今日以降**かつ `connpass_url` が
+  設定されているイベント。`--slug` 指定時はそのイベントだけ（開催済みも可）
+- 出力は申込数 / 定員（充足率）・補欠数・受付状態。`--notify slack` で
+  remind と同じ Slack Webhook に送れます（`actions/watch` を cron に載せる想定）
+- `connpass_url` 未設定のイベントは通知内で ⚠️ として報告されます
+  （静かに落とすと「全部見えている」ように誤読されるため）
 
 ### page テンプレートの変数
 

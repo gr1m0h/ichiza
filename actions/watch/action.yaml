@@ -1,0 +1,17 @@
+name: ichiza watch
+description: Report registration counts for upcoming events (connpass API v2, Slack webhook)
+inputs:
+  version:
+    description: ichiza version
+    default: latest
+runs:
+  using: composite
+  steps:
+    - uses: gr1m0h/ichiza/actions/setup@v0
+      with:
+        version: ${{ inputs.version }}
+    - run: ichiza watch --notify slack
+      shell: bash
+      env:
+        CONNPASS_API_KEY: ${{ env.CONNPASS_API_KEY }}
+        SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}

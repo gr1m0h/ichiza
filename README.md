@@ -53,7 +53,8 @@ gr1m0h/ichiza          # 本体: CLI + composite actions
 ├── actions/setup      # CLI インストール
 ├── actions/new        # 旗揚げ（scaffold → PR + Issues + 募集ページ原稿）
 ├── actions/remind     # 期限リマインド（cron）
-└── actions/registry   # 募集ページ原稿の再生成（event.yaml 更新時）
+├── actions/registry   # 募集ページ原稿の再生成（event.yaml 更新時）
+└── actions/watch      # 申込数ウォッチ（cron / connpass API v2）
 
 gr1m0h/ichiza-starter  # コミュニティが複製するテンプレート（template repository）
 ├── .github/workflows/ichiza-new.yml     # Run workflow ボタン
@@ -81,6 +82,10 @@ $ ichiza new ... --issues   # gh CLI 経由で期限つき Issues も一括生�
 $ ichiza remind                   # 期限超過 + 7日以内のタスクを表示
 $ ichiza remind --notify slack    # SLACK_WEBHOOK_URL に通知（cron 用）
 $ ichiza registry --slug tokyo-3  # 募集ページ原稿を生成（connpass コピペ用）
+
+$ export CONNPASS_API_KEY=...     # connpass サポートへの申請制
+$ ichiza watch                    # 開催前イベントの申込数 / 補欠 / 受付状態を表示
+$ ichiza watch --notify slack     # SLACK_WEBHOOK_URL に通知（cron 用）
 ```
 
 生成物:
@@ -121,6 +126,8 @@ ichiza の設計原則です。
 - [x] `ichiza registry` — 募集ページ原稿の生成（connpass に書き込み API がないため
       「コピーして新規作成 → ペースト」まで人間の作業を圧縮。登壇者を含め event.yaml が
       SSoT。テンプレは運営リポジトリ側でカスタマイズ可能、job summary へ出力）
-- [ ] `ichiza watch` — connpass API v2 で申込数ウォッチ（adapter 化して他サービス対応）
+- [x] `ichiza watch` — connpass API v2 で申込数ウォッチ（`registry.type` の adapter 選択、
+      X-API-Key 認証 + `CONNPASS_API_KEY`。申込数 / 定員充足率 / 補欠 / 受付状態を
+      stdout or Slack へ。他サービスは Fetcher adapter の追加で対応）
 - [ ] `ichiza draft` — 告知記事・開催記事・司会資料の下書き生成
 - [ ] `ichiza kpt` — アンケート集計 → KPT 下書き
