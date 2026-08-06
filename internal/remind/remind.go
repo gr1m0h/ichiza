@@ -20,6 +20,9 @@ type Options struct {
 	EventsDir  string
 	Now        time.Time
 	WindowDays int // look-ahead: tasks due within this many days
+	// ClosedIssues marks tasks completed via their GitHub issue
+	// (keys from ClosedIssues()). nil (no gh) = nothing counts as done.
+	ClosedIssues map[string]bool
 }
 
 type Item struct {
@@ -32,9 +35,10 @@ type EventDigest struct {
 	Items []Item
 }
 
-// Collect walks EventsDir and returns, per event, the undone tasks that
-// are overdue or due within WindowDays. A missing EventsDir is not an
-// error: a fresh repository simply has nothing to remind about.
+// Collect walks EventsDir and returns, per event, the tasks that are
+// overdue or due within WindowDays and not completed via their GitHub
+// issue. A missing EventsDir is not an error: a fresh repository simply
+// has nothing to remind about.
 func Collect(opt Options) ([]EventDigest, error) {
 	entries, err := os.ReadDir(opt.EventsDir)
 	if os.IsNotExist(err) {
@@ -65,7 +69,7 @@ func Collect(opt Options) ([]EventDigest, error) {
 		}
 		var items []Item
 		for _, t := range tasks {
-			if t.Done {
+			if opt.ClosedIssues[taskKey(e.Event.Slug, t.Due.Format("2006-01-02"), t.Title)] {
 				continue
 			}
 			days := int(t.Due.Sub(now).Hours() / 24)

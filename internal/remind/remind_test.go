@@ -43,7 +43,6 @@ func TestCollect(t *testing.T) {
 	eventsDir := filepath.Join(t.TempDir(), "events")
 	writeEventDir(t, eventsDir, "hiroshima-1", "SRE Lounge Hiroshima #1", "2026-10-30", "", []task.Task{
 		{Title: "期限超過タスク", Due: date(t, "2026-10-25")},
-		{Title: "完了済みタスク", Due: date(t, "2026-10-28"), Done: true},
 		{Title: "本日期限タスク", Due: date(t, "2026-10-27")},
 		{Title: "期限内タスク", Due: date(t, "2026-10-30")},
 		{Title: "期限外タスク", Due: date(t, "2026-11-10")},
@@ -85,12 +84,15 @@ func TestCollect(t *testing.T) {
 	}
 }
 
-func TestCollectAllDone(t *testing.T) {
+func TestCollectAllClosed(t *testing.T) {
 	eventsDir := filepath.Join(t.TempDir(), "events")
 	writeEventDir(t, eventsDir, "done-1", "Done", "2026-10-30", "", []task.Task{
-		{Title: "済", Due: date(t, "2026-10-28"), Done: true},
+		{Title: "済", Due: date(t, "2026-10-28")},
 	})
-	digests, err := Collect(Options{EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7})
+	digests, err := Collect(Options{
+		EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7,
+		ClosedIssues: map[string]bool{taskKey("done-1", "2026-10-28", "済"): true},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

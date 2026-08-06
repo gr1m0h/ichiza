@@ -63,7 +63,8 @@ $ ichiza watch [--notify slack]   # 開催前イベントの申込数 / 補欠 /
 ```
 
 - タスク管理は 1 タスク = 1 Issue（期限入りタイトル + イベントごとのマイルストーン）。
-  リマインドの判定元は `events/<slug>/tasks.yaml` の `done:` フラグ
+  完了状態は Issue の open / close が持ち、閉じた Issue のタスクはリマインド対象外
+  （gh 経由で照合。tasks.yaml は「何をいつまでに」の定義のみで完了状態を持たない）
 - `remind` は announce ラベルのタスクに X の投稿画面を開く intent URL を添付
 - `registry` は connpass に書き込み API がないため「コピーして新規作成 → ペースト」
   まで人間の作業を圧縮する設計。本文テンプレートは運営リポジトリ側でカスタマイズ可能

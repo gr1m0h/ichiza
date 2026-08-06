@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -118,8 +119,20 @@ func cmdRemind(args []string) error {
 	if err != nil {
 		return err
 	}
+	// Closed issues are the completion state. gh missing (minimal local
+	// env) or failing (no auth, offline) degrades with a warning: every
+	// listed task is reminded.
+	var closed map[string]bool
+	if _, lookErr := exec.LookPath("gh"); lookErr == nil {
+		if closed, err = remind.ClosedIssues(); err != nil {
+			fmt.Fprintf(os.Stderr, "remind: closed Issue を取得できないため完了済みタスクも表示されます: %v\n", err)
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, "remind: gh が見つからないため完了済みタスクも表示されます")
+	}
 	digests, err := remind.Collect(remind.Options{
 		EventsDir: cfg.EventsDir, Now: now, WindowDays: *days,
+		ClosedIssues: closed,
 	})
 	if err != nil {
 		return err
