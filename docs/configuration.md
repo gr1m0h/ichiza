@@ -4,14 +4,14 @@
 
 | ファイル | 役割 |
 |---|---|
-| `ichiza.yaml` | コミュニティの既定値（開催形態・会場・役割・配信など）。旗揚げ時に `event.yaml` の雛形へ反映される |
-| `templates/lifecycle.yaml` | タスクの雛形。開催日からのオフセットで定義し、旗揚げ時に期限つきタスク（`tasks.yaml` + GitHub Issues）へ展開される |
+| `ichiza.yaml` | コミュニティの既定値（開催形態・会場・役割・配信など）。イベント作成時に `event.yaml` の雛形へ反映される |
+| `templates/lifecycle.yaml` | タスクの雛形。開催日からのオフセットで定義し、イベント作成時に期限つきタスク（`tasks.yaml` + GitHub Issues）へ展開される |
 
 どちらも省略可能です。`ichiza.yaml` がない場合は内蔵のフォールバック値
 （onsite / organizer 1人 / `templates/lifecycle.yaml`）で動きます。
 
 `lifecycle.yaml` だけ `templates/` 配下にあるのは、設定（`ichiza.yaml`）ではなく
-旗揚げのたびに展開される**テンプレート**であり、用途別に複数置けるためです
+イベント作成のたびに展開される**テンプレート**であり、用途別に複数置けるためです
 （例: 通常回と LT 大会。`ichiza new --lifecycle templates/lt-night.yaml` または
 `actions/new` の `lifecycle` input で切り替え）。
 
@@ -23,7 +23,7 @@
 lifecycle: templates/lifecycle.yaml   # lifecycle テンプレートのパス
 events_dir: events                    # イベントディレクトリの生成先
 
-defaults:                             # 旗揚げ時の event.yaml 雛形に反映される既定値
+defaults:                             # イベント作成時の event.yaml 雛形に反映される既定値
   mode: hybrid                        # onsite | hybrid | online
   venue:
     name: 〇〇ビル 3F セミナールーム   # 会場名（省略可）
@@ -45,7 +45,7 @@ notifier:
   type: slack                         # 通知 adapter
 registry:
   type: connpass                      # イベント募集ページ adapter
-  templates:                          # 募集ページ原稿のテンプレ（省略時は内蔵デフォルト）
+  templates:                          # 募集ページ本文のテンプレ（省略時は内蔵デフォルト）
     page: templates/registry/page.md
     speaker: templates/registry/speaker.md
 sns:
@@ -59,10 +59,10 @@ sns:
 |---|---|---|
 | `lifecycle` | lifecycle テンプレートのパス | `templates/lifecycle.yaml` |
 | `events_dir` | `events/<slug>/` を生成する場所 | `events` |
-| `defaults` | 旗揚げ時の既定値（下記） | 最小構成 |
+| `defaults` | イベント作成時の既定値（下記） | 最小構成 |
 | `notifier.type` | 通知先 adapter。現状 `slack` のみ | `slack` |
 | `registry.type` | 募集ページ adapter。現状 `connpass` のみ | `connpass` |
-| `registry.templates.page` | 募集ページ原稿（全文）のテンプレパス | 内蔵デフォルト |
+| `registry.templates.page` | 募集ページ本文（全文）のテンプレパス | 内蔵デフォルト |
 | `registry.templates.speaker` | 登壇者1名分セクションのテンプレパス | 内蔵デフォルト |
 | `sns.x.mode` | X 告知の方式。現状 `intent`（投稿画面リンクの半自動方式）のみ | `intent` |
 
@@ -73,8 +73,8 @@ sns:
 
 ### defaults
 
-旗揚げ時に `events/<slug>/event.yaml` の雛形へコピーされる値です。
-**旗揚げ後のイベントには影響しません**（event.yaml が SSoT。個別イベントの変更は
+イベント作成時に `events/<slug>/event.yaml` の雛形へコピーされる値です。
+**作成済みのイベントには影響しません**（event.yaml が SSoT。個別イベントの変更は
 event.yaml を直接編集します）。
 
 | キー | 意味 |
@@ -115,21 +115,21 @@ tasks:
 
 ### 設計のヒント
 
-- **最長オフセットが旗揚げの締切を決めます**。`-35d` のタスクがあるなら、開催日の
-  35 日以上前に旗揚げしないと生成直後から期限超過になります
+- **最長オフセットがイベント作成の締切を決めます**。`-35d` のタスクがあるなら、開催日の
+  35 日以上前に作成しないと生成直後から期限超過になります
 - 展開されたタスクは期限順にソートされ、1 イベント = 1 マイルストーンで Issues 化されます
-- 振り返り（KPT）で出た運営改善は lifecycle.yaml に反映すると次回の旗揚げから自動で効きます
-- 定期開催なら「次回イベントの旗揚げ」タスク（`due: 105d` など正のオフセット）を
+- 振り返り（KPT）で出た運営改善は lifecycle.yaml に反映すると次回のイベント作成から自動で効きます
+- 定期開催なら「次回イベントの作成」タスク（`due: 105d` など正のオフセット）を
   入れておくと、開催サイクル自体がリマインドに乗ります
 
-## 募集ページ原稿テンプレート（registry.templates）
+## 募集ページ本文テンプレート（registry.templates）
 
 connpass には書き込み API がないため、ichiza は「connpass の**コピーして新規作成** →
-生成された原稿をペースト → 公開」まで人間の作業を圧縮するアプローチを取ります。
-原稿は `ichiza registry` が event.yaml（SSoT）から生成し、GitHub Actions では
+生成された本文をペースト → 公開」まで人間の作業を圧縮するアプローチを取ります。
+本文は `ichiza registry` が event.yaml（SSoT）から生成し、GitHub Actions では
 job summary に出力されます:
 
-- 旗揚げ時（`actions/new`）: 雛形の内容で全文を生成
+- イベント作成時（`actions/new`）: 雛形の内容で全文を生成
 - event.yaml 更新後（`actions/registry` を Run workflow で実行）: 全文を再生成。
   登壇者を追加したときも、公開済みページの本文へ**全文を貼り直す**運用が
   差分追記より簡単で崩れません（connpass の編集は本文の全置換のため）

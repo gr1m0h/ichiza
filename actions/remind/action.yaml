@@ -14,3 +14,5 @@ runs:
       shell: bash
       env:
         SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}
+        # gh reads closed issues so they count as done (workflow needs issues: read)
+        GH_TOKEN: ${{ github.token }}

@@ -70,9 +70,6 @@ func TestRun(t *testing.T) {
 	if got := tasks[0].Due.Format("2006-01-02"); got != "2026-10-23" {
 		t.Errorf("first due = %s, want 2026-10-23", got)
 	}
-	if tasks[0].Done {
-		t.Error("fresh task should not be done")
-	}
 }
 
 func TestRunOnsiteFiltersStreamingTasks(t *testing.T) {

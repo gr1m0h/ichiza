@@ -1,5 +1,7 @@
-// Package task owns the on-disk schema of tasks.yaml — the dated,
-// checkable task list scaffold writes and remind reads.
+// Package task owns the on-disk schema of tasks.yaml — the dated task
+// list scaffold writes and remind reads. Completion state is not here:
+// it lives in GitHub Issues (close the issue), so tasks.yaml stays a
+// pure definition of what is due when. Drop a line to cancel a task.
 package task
 
 import (
@@ -14,15 +16,14 @@ type Task struct {
 	Title  string
 	Due    time.Time
 	Labels []string
-	Done   bool
 }
 
 // doc is the YAML representation: dates stay human-readable strings.
+// Legacy files may still carry a done: field; it is ignored on load.
 type doc struct {
 	Title  string   `yaml:"title"`
 	Due    string   `yaml:"due"`
 	Labels []string `yaml:"labels,omitempty"`
-	Done   bool     `yaml:"done"`
 }
 
 func Save(path string, tasks []Task) error {
@@ -32,7 +33,6 @@ func Save(path string, tasks []Task) error {
 			Title:  t.Title,
 			Due:    t.Due.Format("2006-01-02"),
 			Labels: t.Labels,
-			Done:   t.Done,
 		})
 	}
 	b, err := yaml.Marshal(map[string]any{"tasks": docs})
@@ -59,7 +59,7 @@ func Load(path string) ([]Task, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: task %q: %w", path, d.Title, err)
 		}
-		tasks = append(tasks, Task{Title: d.Title, Due: due, Labels: d.Labels, Done: d.Done})
+		tasks = append(tasks, Task{Title: d.Title, Due: due, Labels: d.Labels})
 	}
 	return tasks, nil
 }

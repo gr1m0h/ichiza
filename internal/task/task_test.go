@@ -19,6 +19,8 @@ func date(t *testing.T, s string) time.Time {
 
 func TestLoad(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "tasks.yaml")
+	// done: is a legacy field (completion moved to GitHub Issues);
+	// files that still carry it must load without error.
 	src := `tasks:
   - title: connpassページ公開
     due: "2026-09-30"
@@ -46,12 +48,6 @@ func TestLoad(t *testing.T) {
 	}
 	if len(tasks[0].Labels) != 1 || tasks[0].Labels[0] != "announce" {
 		t.Errorf("labels = %v", tasks[0].Labels)
-	}
-	if tasks[0].Done {
-		t.Error("tasks[0].Done = true, want false")
-	}
-	if !tasks[1].Done {
-		t.Error("tasks[1].Done = false, want true")
 	}
 }
 
@@ -85,7 +81,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "tasks.yaml")
 	in := []Task{
 		{Title: "告知", Due: date(t, "2026-10-01"), Labels: []string{"announce"}},
-		{Title: "設営", Due: date(t, "2026-10-30"), Done: true},
+		{Title: "設営", Due: date(t, "2026-10-30")},
 	}
 	if err := Save(path, in); err != nil {
 		t.Fatal(err)
@@ -98,7 +94,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 		t.Fatalf("got %d tasks, want %d", len(out), len(in))
 	}
 	for i := range in {
-		if out[i].Title != in[i].Title || !out[i].Due.Equal(in[i].Due) || out[i].Done != in[i].Done {
+		if out[i].Title != in[i].Title || !out[i].Due.Equal(in[i].Due) {
 			t.Errorf("task %d = %+v, want %+v", i, out[i], in[i])
 		}
 	}
