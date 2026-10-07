@@ -4,11 +4,11 @@
 
 | ファイル | 役割 |
 |---|---|
-| `ichiza.yaml` | コミュニティの既定値（開催形態・会場・役割・配信など）。イベント作成時に `event.yaml` の雛形へ反映される |
-| `templates/lifecycle.yaml` | タスクの雛形。開催日からのオフセットで定義し、イベント作成時に期限つきタスク（`tasks.yaml` + GitHub Issues）へ展開される |
+| `ichiza.yaml` | タイムゾーン、運営メンバー、開催形態・会場・役割・配信などの既定値 |
+| `templates/lifecycle.yaml` | ID つきタスクの雛形。イベント作成時に `tasks.yaml` と Dashboard Issue へ展開される |
 
 どちらも省略可能です。`ichiza.yaml` がない場合は内蔵のフォールバック値
-（onsite / organizer 1人 / `templates/lifecycle.yaml`）で動きます。
+（Asia/Tokyo / onsite / organizer 1人 / `templates/lifecycle.yaml`）で動きます。
 
 `lifecycle.yaml` だけ `templates/` 配下にあるのは、設定（`ichiza.yaml`）ではなく
 イベント作成のたびに展開される**テンプレート**であり、用途別に複数置けるためです
@@ -22,6 +22,12 @@
 ```yaml
 lifecycle: templates/lifecycle.yaml   # lifecycle テンプレートのパス
 events_dir: events                    # イベントディレクトリの生成先
+timezone: Asia/Tokyo                  # 期限判定に使う IANA time zone
+
+members:
+  - github: alice                     # GitHub login / lifecycle の assignee
+    email: alice@example.com          # Cloudflare Access の認証メール
+    slack_user_id: U0123456789        # Slack メンション（任意）
 
 defaults:                             # イベント作成時の event.yaml 雛形に反映される既定値
   mode: hybrid                        # onsite | hybrid | online
@@ -48,9 +54,6 @@ registry:
   templates:                          # 募集ページ本文のテンプレ（省略時は内蔵デフォルト）
     page: templates/registry/page.md
     speaker: templates/registry/speaker.md
-sns:
-  x:
-    mode: intent                      # X 告知の方式
 ```
 
 ### トップレベル
@@ -59,17 +62,30 @@ sns:
 |---|---|---|
 | `lifecycle` | lifecycle テンプレートのパス | `templates/lifecycle.yaml` |
 | `events_dir` | `events/<slug>/` を生成する場所 | `events` |
+| `timezone` | remind の「今日」と期限判定に使う IANA time zone | `Asia/Tokyo` |
+| `members` | GitHub login・メール・任意の Slack User ID を持つ運営者 | 空 |
 | `defaults` | イベント作成時の既定値（下記） | 最小構成 |
 | `notifier.type` | 通知先 adapter。現状 `slack` のみ | `slack` |
 | `registry.type` | 募集ページ adapter。現状 `connpass` のみ | `connpass` |
 | `registry.templates.page` | 募集ページ本文（全文）のテンプレパス | 内蔵デフォルト |
 | `registry.templates.speaker` | 登壇者1名分セクションのテンプレパス | 内蔵デフォルト |
-| `sns.x.mode` | X 告知の方式。現状 `intent`（投稿画面リンクの半自動方式）のみ | `intent` |
 
-> `notifier.type` / `sns` は現状**宣言のみ**で、値を変えても動作は変わりません
+> `notifier.type` は現状**宣言のみ**で、値を変えても動作は変わりません
 > （remind の Slack 通知・announce タスクへの X intent リンクが現在の実装です）。
 > `registry.type` は `ichiza watch` の adapter 選択に使われます（現状 `connpass` のみ。
 > それ以外の値はエラー）。discord / doorkeeper / X API など adapter の追加は Roadmap 項目です。
+
+### members
+
+| キー | 必須 | 用途 |
+|---|---|---|
+| `github` | はい | Dashboard の担当者、lifecycle の `assignee`、Web の My Page |
+| `email` | はい | Cloudflare Access の認証メールと照合する Web 許可リスト |
+| `slack_user_id` | いいえ | remind の担当者メンション |
+
+GitHub login とメールは重複不可です。メールは小文字へ正規化されます。
+Web は Cloudflare Access policy と `members.email` の両方に一致する運営者だけを許可します。
+`ichiza web-config` は Web に必要な email と GitHub login だけを JSON 出力します。
 
 ### defaults
 
@@ -93,31 +109,38 @@ event.yaml を直接編集します）。
 
 ```yaml
 tasks:
-  - title: 会場確定・確保          # タスク名（Issue タイトルになる）
+  - id: secure-venue               # イベント内で一意。必須
+    title: 会場確定・確保          # Dashboard に表示するタスク名
     due: -35d                     # 開催日からのオフセット
+    assignee: alice               # 担当者の GitHub login（任意）
     labels: [venue]               # ラベル
     modes: [onsite, hybrid]       # このモードのときだけ展開（省略 = 全モード）
-    body: |                       # Issue 本文（省略可。チェックリスト推奨）
+    body: |                       # タスク直下の手順（省略可）
       確認項目:
       - [ ] 収容人数
       - [ ] Wi-Fi
-  - { title: イベントページ作成・公開, due: -30d, labels: [announce] }
-  - { title: お礼, due: 1d, labels: [followup] }
+  - { id: publish-event-page, title: イベントページ作成・公開, due: -30d, labels: [announce] }
+  - { id: thank-participants, title: お礼, due: 1d, labels: [followup] }
 ```
 
 | フィールド | 意味 |
 |---|---|
-| `title` | タスク名。Issue は `【〜MM/DD】タスク名` の形式で作られる |
+| `id` | 必須。一意な小文字英数字・ハイフンの ID。Dashboard と Web の更新に使用 |
+| `title` | Dashboard に表示するタスク名 |
 | `due` | 開催日からのオフセット。`-30d`（30日前）/ `-2w`（2週間前）/ `0d`（当日）/ `3d`(3日後)。`d` = 日、`w` = 週 |
-| `labels` | Issue に付くラベル。**`announce` は特別扱い**: リマインド通知に X の投稿画面を開くリンクが付く |
+| `assignee` | 担当者の GitHub login。`members.github` と対応させる |
+| `labels` | タスク分類。**`announce` は特別扱い**: リマインド通知に X の投稿画面を開くリンクが付く |
 | `modes` | 展開条件。指定したモード（`onsite` / `hybrid` / `online`）のイベントのときだけタスク化される。省略時は常に展開 |
-| `body` | Issue 本文（markdown）。当日チェックリストや確認項目を書いておくと Issue がそのまま作業手順書になる |
+| `body` | Dashboard のタスク直下に置く markdown。入れ子チェックボックスは完了判定に含まれない |
 
 ### 設計のヒント
 
 - **最長オフセットがイベント作成の締切を決めます**。`-35d` のタスクがあるなら、開催日の
   35 日以上前に作成しないと生成直後から期限超過になります
-- 展開されたタスクは期限順にソートされ、1 イベント = 1 マイルストーンで Issues 化されます
+- 展開されたタスクは期限順にソートされ、1 イベント = 1 Dashboard Issue にまとまります
+- 完了状態は Dashboard の最上位チェックボックスだけが持ちます。task ID は作成後も安定させます
+- 作成済みイベントの `event.yaml` / `tasks.yaml` を変更したら `ichiza dashboard sync --slug <slug>` で反映します。
+  sync は task ID ごとの完了状態と Notes を保持します
 - 振り返り（KPT）で出た運営改善は lifecycle.yaml に反映すると次回のイベント作成から自動で効きます
 - 定期開催なら「次回イベントの作成」タスク（`due: 105d` など正のオフセット）を
   入れておくと、開催サイクル自体がリマインドに乗ります
@@ -184,5 +207,5 @@ markdown / テキストです。
 ## 実例
 
 - 最小構成（同梱フォールバック相当）: [`templates/lifecycle.yaml`](../templates/lifecycle.yaml)
-- フル構成（ハイブリッド配信・6役体制・チェックリスト付き Issue・定期開催サイクル）:
+- フル構成（ハイブリッド配信・複数役体制・Dashboard チェックリスト・定期開催サイクル）:
   [`examples/meetup/`](../examples/meetup/)

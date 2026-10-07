@@ -1,0 +1,70 @@
+name: ichiza web deploy
+description: Deploy the shared ichiza Web cockpit to a community Cloudflare Worker
+inputs:
+  worker-name:
+    description: Cloudflare Worker name
+    required: true
+  repository:
+    description: GitHub repository in owner/repository form (default is the current repository)
+    default: ""
+  members:
+    description: JSON array of allowed operators with email and github fields
+    default: "[]"
+  timezone:
+    description: IANA timezone used for due-date status
+    default: Asia/Tokyo
+  access-team-domain:
+    description: Cloudflare Access team domain (team.cloudflareaccess.com)
+    default: ""
+  access-aud:
+    description: Cloudflare Access application audience
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: ${{ github.action_path }}/../../web/package-lock.json
+    - name: Install ichiza web
+      run: npm ci
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../web
+    - name: Deploy Worker
+      run: |
+        : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN is required}"
+        : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID is required}"
+        : "${ICHIZA_GITHUB_TOKEN:?ICHIZA_GITHUB_TOKEN is required}"
+
+        repository="$INPUT_REPOSITORY"
+        if [ -z "$repository" ]; then
+          repository="$GITHUB_REPOSITORY"
+        fi
+        node -e 'JSON.parse(process.argv[1])' "$INPUT_MEMBERS"
+        node -e 'new Intl.DateTimeFormat("en-US", {timeZone: process.argv[1]}).format()' "$INPUT_TIMEZONE"
+
+        secrets_file=$(mktemp)
+        trap 'rm -f "$secrets_file"' EXIT
+        SECRETS_FILE="$secrets_file" node -e \
+          'require("node:fs").writeFileSync(process.env.SECRETS_FILE, JSON.stringify({ICHIZA_GITHUB_TOKEN: process.env.ICHIZA_GITHUB_TOKEN}))'
+
+        npx --no-install wrangler deploy \
+          --name "$INPUT_WORKER_NAME" \
+          --var "ICHIZA_REPOSITORY:$repository" \
+          --var "ICHIZA_MEMBERS:$INPUT_MEMBERS" \
+          --var "ICHIZA_TIMEZONE:$INPUT_TIMEZONE" \
+          --var "CF_ACCESS_TEAM_DOMAIN:$INPUT_ACCESS_TEAM_DOMAIN" \
+          --var "CF_ACCESS_AUD:$INPUT_ACCESS_AUD" \
+          --secrets-file "$secrets_file" \
+          --strict
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../web
+      env:
+        INPUT_WORKER_NAME: ${{ inputs.worker-name }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_MEMBERS: ${{ inputs.members }}
+        INPUT_TIMEZONE: ${{ inputs.timezone }}
+        INPUT_ACCESS_TEAM_DOMAIN: ${{ inputs.access-team-domain }}
+        INPUT_ACCESS_AUD: ${{ inputs.access-aud }}
+        WRANGLER_SEND_METRICS: "false"

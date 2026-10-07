@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ichiza-web",
+  "main": "src/app.ts",
+  "compatibility_date": "2026-10-07",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,20 @@
+name: ichiza dashboard reconcile
+description: Close a completed event Dashboard Issue or reopen an incomplete one
+inputs:
+  issue-number:
+    description: Event Dashboard Issue number
+    required: true
+  version:
+    description: ichiza version
+    default: latest
+runs:
+  using: composite
+  steps:
+    - uses: gr1m0h/ichiza/actions/setup@v0
+      with:
+        version: ${{ inputs.version }}
+    - run: ichiza dashboard reconcile --issue "$INPUT_ISSUE_NUMBER"
+      shell: bash
+      env:
+        INPUT_ISSUE_NUMBER: ${{ inputs.issue-number }}
+        GH_TOKEN: ${{ env.GH_TOKEN }}
