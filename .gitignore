@@ -37,3 +37,9 @@ go.work.sum
 # Built binary / release artifacts
 /ichiza
 dist/
+
+# ichiza web
+web/node_modules/
+web/coverage/
+web/.wrangler/
+web/.dev.vars

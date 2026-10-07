@@ -21,18 +21,22 @@ type Template struct {
 }
 
 type TemplateTask struct {
-	Title  string       `yaml:"title"`
-	Due    string       `yaml:"due"` // e.g. "-30d", "-2w", "0d" (= event day)
-	Labels []string     `yaml:"labels"`
-	Modes  []event.Mode `yaml:"modes"` // empty = all modes
-	Body   string       `yaml:"body"`
+	ID       string       `yaml:"id"`
+	Title    string       `yaml:"title"`
+	Due      string       `yaml:"due"` // e.g. "-30d", "-2w", "0d" (= event day)
+	Assignee string       `yaml:"assignee"`
+	Labels   []string     `yaml:"labels"`
+	Modes    []event.Mode `yaml:"modes"` // empty = all modes
+	Body     string       `yaml:"body"`
 }
 
 type Task struct {
-	Title  string
-	Due    time.Time
-	Labels []string
-	Body   string
+	ID       string
+	Title    string
+	Due      time.Time
+	Assignee string
+	Labels   []string
+	Body     string
 }
 
 func LoadTemplate(path string) (*Template, error) {
@@ -74,6 +78,9 @@ func Expand(t *Template, e *event.Event) ([]Task, error) {
 	}
 	var out []Task
 	for _, tt := range t.Tasks {
+		if tt.ID == "" {
+			return nil, fmt.Errorf("task %q: id is required", tt.Title)
+		}
 		if len(tt.Modes) > 0 && !slices.Contains(tt.Modes, e.Event.Mode) {
 			continue
 		}
@@ -81,11 +88,10 @@ func Expand(t *Template, e *event.Event) ([]Task, error) {
 		if err != nil {
 			return nil, fmt.Errorf("task %q: %w", tt.Title, err)
 		}
+		due := date.AddDate(0, 0, days)
 		out = append(out, Task{
-			Title:  tt.Title,
-			Due:    date.AddDate(0, 0, days),
-			Labels: tt.Labels,
-			Body:   tt.Body,
+			ID: tt.ID, Title: tt.Title, Due: due, Assignee: tt.Assignee,
+			Labels: tt.Labels, Body: tt.Body,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Due.Before(out[j].Due) })

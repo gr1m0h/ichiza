@@ -3,6 +3,8 @@
 # Copy and adapt to your own community.
 lifecycle: examples/meetup/lifecycle.yaml
 events_dir: events
+timezone: Asia/Tokyo
+members: [] # github / email / optional slack_user_id; see docs/configuration.md
 defaults:
   mode: hybrid
   venue:
@@ -23,6 +25,3 @@ registry:
   templates: # 募集ページ本文のテンプレ（省略時は内蔵デフォルト）
     page: examples/meetup/registry/page.md
     speaker: examples/meetup/registry/speaker.md
-sns:
-  x:
-    mode: intent

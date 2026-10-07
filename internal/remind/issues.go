@@ -1,62 +1,55 @@
-// Closed-issue lookup: GitHub Issues own completion state, so closing
-// the issue is all the operator has to do. tasks.yaml stays a pure
-// definition of what is due when.
+// Dashboard lookup: the checkbox in each event's single Dashboard Issue owns
+// task completion state. tasks.yaml stays a pure definition of what is due.
 package remind
 
 import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"regexp"
+
+	"github.com/gr1m0h/ichiza/internal/dashboard"
 )
 
-// execCommand is swapped in tests so ClosedIssues can run without gh.
+// execCommand is swapped in tests so DashboardTasks can run without gh.
 var execCommand = exec.Command
 
-// Issue metadata written by scaffold: the title carries a 【〜MM/DD】 prefix,
-// the body carries machine-readable "event: `slug`" / "due: YYYY-MM-DD" lines.
-// \r? tolerates bodies rewritten to CRLF by the GitHub web editor.
-var (
-	titlePrefix = regexp.MustCompile(`^【〜\d{2}/\d{2}】`)
-	bodySlug    = regexp.MustCompile("(?m)^event: `([a-z0-9][a-z0-9-]*)`\r?$")
-	bodyDue     = regexp.MustCompile(`(?m)^due: (\d{4}-\d{2}-\d{2})\r?$`)
-)
-
-// taskKey identifies a task across tasks.yaml and its GitHub issue.
-func taskKey(slug, due, title string) string {
-	return slug + "\x00" + due + "\x00" + title
+func taskKey(slug, id string) string {
+	return slug + "\x00" + id
 }
 
-// ClosedIssues returns the task keys of closed issues in the current
-// repository via the gh CLI. Issues without scaffold's metadata (created
-// by hand, or retitled) are ignored. Callers should degrade to
-// tasks.yaml-only judgement when this errors (no gh, no auth, offline).
-func ClosedIssues() (map[string]bool, error) {
+// DashboardTasks returns completion state from all labelled event Dashboard
+// Issues in the current repository via the gh CLI.
+func DashboardTasks() (map[string]bool, error) {
 	out, err := execCommand("gh", "issue", "list",
-		"--state", "closed", "--limit", "500", "--json", "title,body").Output()
+		"--state", "all", "--limit", "500", "--label", "ichiza:event", "--json", "body,url").Output()
 	if err != nil {
 		return nil, fmt.Errorf("gh issue list: %w", err)
 	}
-	return parseClosedIssues(out)
+	return parseDashboardTasks(out)
 }
 
-func parseClosedIssues(out []byte) (map[string]bool, error) {
+func parseDashboardTasks(out []byte) (map[string]bool, error) {
 	var issues []struct {
-		Title string `json:"title"`
-		Body  string `json:"body"`
+		Body string `json:"body"`
+		URL  string `json:"url"`
 	}
 	if err := json.Unmarshal(out, &issues); err != nil {
 		return nil, fmt.Errorf("parse gh issue list output: %w", err)
 	}
-	closed := make(map[string]bool, len(issues))
+	completed := make(map[string]bool)
+	seenSlugs := make(map[string]bool, len(issues))
 	for _, is := range issues {
-		slug := bodySlug.FindStringSubmatch(is.Body)
-		due := bodyDue.FindStringSubmatch(is.Body)
-		if slug == nil || due == nil {
-			continue // not an ichiza-generated issue
+		doc, err := dashboard.Parse(is.Body)
+		if err != nil {
+			return nil, fmt.Errorf("parse dashboard %s: %w", is.URL, err)
 		}
-		title := titlePrefix.ReplaceAllString(is.Title, "")
-		closed[taskKey(slug[1], due[1], title)] = true
+		if seenSlugs[doc.Slug] {
+			return nil, fmt.Errorf("duplicate dashboard for event %q", doc.Slug)
+		}
+		seenSlugs[doc.Slug] = true
+		for _, item := range doc.Tasks {
+			completed[taskKey(doc.Slug, item.ID)] = item.Done
+		}
 	}
-	return closed, nil
+	return completed, nil
 }

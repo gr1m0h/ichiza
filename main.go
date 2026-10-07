@@ -5,11 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gr1m0h/ichiza/internal/config"
+	"github.com/gr1m0h/ichiza/internal/dashboard"
 	"github.com/gr1m0h/ichiza/internal/event"
 	"github.com/gr1m0h/ichiza/internal/notify"
 	"github.com/gr1m0h/ichiza/internal/registry"
@@ -22,8 +23,11 @@ const usage = `ichiza — community event operations as Code
 
 Usage:
   ichiza new       --slug <slug> --title <title> --date <YYYY-MM-DD>
-                   [--mode onsite|hybrid|online] [--lifecycle <path>] [--issues]
+                   [--mode onsite|hybrid|online] [--lifecycle <path>] [--dashboard]
   ichiza remind    [--notify stdout|slack] [--days 7] [--today <YYYY-MM-DD>]
+  ichiza dashboard reconcile --issue <number>
+  ichiza dashboard sync --slug <slug> [--config ichiza.yaml]
+  ichiza web-config [--config ichiza.yaml]
   ichiza registry  --slug <slug>
   ichiza watch     [--notify stdout|slack] [--slug <slug>] [--today <YYYY-MM-DD>]
                    (CONNPASS_API_KEY required)
@@ -43,6 +47,10 @@ func main() {
 		err = cmdNew(os.Args[2:])
 	case "remind":
 		err = cmdRemind(os.Args[2:])
+	case "dashboard":
+		err = cmdDashboard(os.Args[2:])
+	case "web-config":
+		err = cmdWebConfig(os.Args[2:])
 	case "registry":
 		err = cmdRegistry(os.Args[2:])
 	case "watch":
@@ -59,6 +67,75 @@ func main() {
 	}
 }
 
+func cmdWebConfig(args []string) error {
+	fs := flag.NewFlagSet("web-config", flag.ExitOnError)
+	cfgPath := fs.String("config", "ichiza.yaml", "root config path")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := config.Load(*cfgPath)
+	if err != nil {
+		return err
+	}
+	webConfig, err := cfg.WebConfigJSON()
+	if err != nil {
+		return err
+	}
+	fmt.Println(webConfig)
+	return nil
+}
+
+func cmdDashboard(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("dashboard requires: reconcile --issue <number> or sync --slug <slug>")
+	}
+	if args[0] == "sync" {
+		fs := flag.NewFlagSet("dashboard sync", flag.ExitOnError)
+		slug := fs.String("slug", "", "event slug")
+		cfgPath := fs.String("config", "ichiza.yaml", "root config path")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if *slug == "" {
+			return fmt.Errorf("--slug is required")
+		}
+		cfg, err := config.Load(*cfgPath)
+		if err != nil {
+			return err
+		}
+		issueNumber, err := dashboard.Sync(*slug, cfg.EventsDir)
+		if err != nil {
+			return err
+		}
+		if _, err := dashboard.Reconcile(issueNumber); err != nil {
+			return err
+		}
+		fmt.Printf("dashboard issue #%d synced from event %s\n", issueNumber, *slug)
+		return nil
+	}
+	if args[0] != "reconcile" {
+		return fmt.Errorf("dashboard requires: reconcile --issue <number> or sync --slug <slug>")
+	}
+	fs := flag.NewFlagSet("dashboard reconcile", flag.ExitOnError)
+	issue := fs.Int("issue", 0, "Dashboard Issue number")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+	if *issue <= 0 {
+		return fmt.Errorf("--issue is required")
+	}
+	result, err := dashboard.Reconcile(*issue)
+	if err != nil {
+		return err
+	}
+	if result.Changed {
+		fmt.Printf("dashboard issue #%d -> %s\n", *issue, strings.ToLower(result.State))
+	} else {
+		fmt.Printf("dashboard issue #%d already %s\n", *issue, strings.ToLower(result.State))
+	}
+	return nil
+}
+
 func cmdNew(args []string) error {
 	fs := flag.NewFlagSet("new", flag.ExitOnError)
 	slug := fs.String("slug", "", "event slug (e.g. tokyo-3)")
@@ -67,7 +144,7 @@ func cmdNew(args []string) error {
 	mode := fs.String("mode", "", "onsite | hybrid | online (default: ichiza.yaml defaults.mode)")
 	lc := fs.String("lifecycle", "", "lifecycle template path (default: ichiza.yaml lifecycle)")
 	cfgPath := fs.String("config", "ichiza.yaml", "root config path")
-	issues := fs.Bool("issues", false, "also create GitHub issues via gh")
+	dashboardIssue := fs.Bool("dashboard", false, "also create one GitHub Dashboard Issue via gh")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -87,7 +164,7 @@ func cmdNew(args []string) error {
 	}
 	res, err := scaffold.Run(scaffold.Options{
 		Slug: *slug, Title: *title, Date: *date, Mode: m,
-		LifecyclePath: *lc, CreateIssues: *issues, Config: cfg,
+		LifecyclePath: *lc, CreateDashboard: *dashboardIssue, Config: cfg,
 	})
 	if err != nil {
 		return err
@@ -108,31 +185,27 @@ func cmdRemind(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	now := time.Now()
-	if *today != "" {
-		var err error
-		if now, err = time.Parse("2006-01-02", *today); err != nil {
-			return fmt.Errorf("--today: %w", err)
-		}
-	}
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
 		return err
 	}
-	// Closed issues are the completion state. gh missing (minimal local
-	// env) or failing (no auth, offline) degrades with a warning: every
-	// listed task is reminded.
-	var closed map[string]bool
-	if _, lookErr := exec.LookPath("gh"); lookErr == nil {
-		if closed, err = remind.ClosedIssues(); err != nil {
-			fmt.Fprintf(os.Stderr, "remind: closed Issue を取得できないため完了済みタスクも表示されます: %v\n", err)
+	location, err := time.LoadLocation(cfg.Timezone)
+	if err != nil {
+		return fmt.Errorf("timezone %q: %w", cfg.Timezone, err)
+	}
+	now := time.Now().In(location)
+	if *today != "" {
+		if now, err = time.ParseInLocation("2006-01-02", *today, location); err != nil {
+			return fmt.Errorf("--today: %w", err)
 		}
-	} else {
-		fmt.Fprintln(os.Stderr, "remind: gh が見つからないため完了済みタスクも表示されます")
+	}
+	completed, err := remind.DashboardTasks()
+	if err != nil {
+		return fmt.Errorf("dashboard issue の完了状態を取得: %w", err)
 	}
 	digests, err := remind.Collect(remind.Options{
 		EventsDir: cfg.EventsDir, Now: now, WindowDays: *days,
-		ClosedIssues: closed,
+		CompletedTasks: completed,
 	})
 	if err != nil {
 		return err
@@ -141,7 +214,7 @@ func cmdRemind(args []string) error {
 		fmt.Println("remind: 期限が近いタスクはありません")
 		return nil
 	}
-	msg := remind.Message(now, digests)
+	msg := remind.Message(now, digests, cfg.SlackUsersByGitHub())
 	switch *dest {
 	case "stdout":
 		fmt.Println(msg)

@@ -17,12 +17,10 @@ import (
 )
 
 type Options struct {
-	EventsDir  string
-	Now        time.Time
-	WindowDays int // look-ahead: tasks due within this many days
-	// ClosedIssues marks tasks completed via their GitHub issue
-	// (keys from ClosedIssues()). nil (no gh) = nothing counts as done.
-	ClosedIssues map[string]bool
+	EventsDir      string
+	Now            time.Time
+	WindowDays     int // look-ahead: tasks due within this many days
+	CompletedTasks map[string]bool
 }
 
 type Item struct {
@@ -36,8 +34,8 @@ type EventDigest struct {
 }
 
 // Collect walks EventsDir and returns, per event, the tasks that are
-// overdue or due within WindowDays and not completed via their GitHub
-// issue. A missing EventsDir is not an error: a fresh repository simply
+// overdue or due within WindowDays and not checked in their Dashboard Issue.
+// A missing EventsDir is not an error: a fresh repository simply
 // has nothing to remind about.
 func Collect(opt Options) ([]EventDigest, error) {
 	entries, err := os.ReadDir(opt.EventsDir)
@@ -69,7 +67,7 @@ func Collect(opt Options) ([]EventDigest, error) {
 		}
 		var items []Item
 		for _, t := range tasks {
-			if opt.ClosedIssues[taskKey(e.Event.Slug, t.Due.Format("2006-01-02"), t.Title)] {
+			if opt.CompletedTasks[taskKey(e.Event.Slug, t.ID)] {
 				continue
 			}
 			days := int(t.Due.Sub(now).Hours() / 24)
@@ -90,14 +88,20 @@ func Collect(opt Options) ([]EventDigest, error) {
 
 // Message renders the digests as Slack-friendly plain text.
 // Tasks labeled "announce" get an X intent URL so the reminder doubles
-// as a one-tap SNS post (sns.x.mode: intent).
-func Message(now time.Time, digests []EventDigest) string {
+// as a one-tap SNS post without requiring an X API integration.
+func Message(now time.Time, digests []EventDigest, slackUsersByGitHub map[string]string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "⏰ ichiza remind — %s 時点で期限が近いタスク\n", now.Format("2006-01-02"))
 	for _, d := range digests {
 		fmt.Fprintf(&b, "\n*%s*（%s / %s 開催）\n", d.Event.Event.Title, d.Event.Event.Slug, d.Event.Event.Date)
 		for _, it := range d.Items {
-			fmt.Fprintf(&b, "• %s: %s（%s）\n", deadline(it.DaysLeft), it.Task.Title, it.Task.Due.Format("2006-01-02"))
+			assignee := ""
+			if slackUserID := slackUsersByGitHub[it.Task.Assignee]; slackUserID != "" {
+				assignee = " · <@" + slackUserID + ">"
+			} else if it.Task.Assignee != "" {
+				assignee = " · 担当: " + it.Task.Assignee
+			}
+			fmt.Fprintf(&b, "• %s: %s（%s）%s\n", deadline(it.DaysLeft), it.Task.Title, it.Task.Due.Format("2006-01-02"), assignee)
 			if slices.Contains(it.Task.Labels, "announce") {
 				fmt.Fprintf(&b, "　└ X で告知: %s\n", XIntentURL(d.Event))
 			}
