@@ -8,6 +8,7 @@ interface TaskMetadata {
   readonly id: string
   readonly due: string
   readonly assignee?: string
+  readonly assignee_source?: string
   readonly labels: readonly string[]
 }
 
@@ -57,6 +58,9 @@ function parseTask(line: string): DashboardTask | undefined {
   const [, mark, visibleDue, title, visibleAssignee, rawMetadata] = match
   if (rawMetadata === undefined) throw new Error('invalid task metadata')
   const metadata = parseMetadata(rawMetadata)
+  if (metadata.assignee_source !== undefined && metadata.assignee_source !== 'runtime') {
+    throw new Error(`task "${metadata.id}" has unsupported assignee source`)
+  }
   if (visibleDue !== metadata.due || visibleAssignee !== metadata.assignee) {
     throw new Error(`task "${metadata.id}" visible metadata does not match marker`)
   }
@@ -110,6 +114,30 @@ export function toggleDashboardTask(body: string, taskId: string, done: boolean)
     if (metadata.id !== taskId) return line
     matches += 1
     return `${line.slice(0, 3)}${done ? 'x' : ' '}${line.slice(4)}`
+  })
+  if (matches === 0) throw new Error(`task "${taskId}" not found`)
+  if (matches > 1) throw new Error(`duplicate task id "${taskId}"`)
+  return lines.join('\n')
+}
+
+export function setDashboardTaskAssignee(body: string, taskId: string, assignee: string): string {
+  if (assignee !== '' && !/^[A-Za-z0-9-]+$/.test(assignee)) throw new Error('invalid assignee')
+  let matches = 0
+  const lines = body.split('\n').map((line) => {
+    const match = managedTaskLine.exec(line)
+    if (match === null || match[5] === undefined) return line
+    const metadata = parseMetadata(match[5])
+    if (metadata.id !== taskId) return line
+    matches += 1
+    const updatedMetadata = {
+      ...metadata,
+      assignee: assignee === '' ? undefined : assignee,
+      assignee_source: 'runtime',
+    }
+    const metadataValue = JSON.stringify(updatedMetadata)
+    const visibleAssignee = updatedMetadata.assignee === undefined ? '' : ` · @${updatedMetadata.assignee}`
+    const carriageReturn = line.endsWith('\r') ? '\r' : ''
+    return `- [${match[1]}] **${match[2]}** ${match[3]}${visibleAssignee} <!-- ichiza-task:${metadataValue} -->${carriageReturn}`
   })
   if (matches === 0) throw new Error(`task "${taskId}" not found`)
   if (matches > 1) throw new Error(`duplicate task id "${taskId}"`)

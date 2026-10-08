@@ -17,9 +17,14 @@ func taskKey(slug, id string) string {
 	return slug + "\x00" + id
 }
 
-// DashboardTasks returns completion state from all labelled event Dashboard
+type TaskState struct {
+	Done     bool
+	Assignee string
+}
+
+// DashboardTasks returns runtime state from all labelled event Dashboard
 // Issues in the current repository via the gh CLI.
-func DashboardTasks() (map[string]bool, error) {
+func DashboardTasks() (map[string]TaskState, error) {
 	out, err := execCommand("gh", "issue", "list",
 		"--state", "all", "--limit", "500", "--label", "ichiza:event", "--json", "body,url").Output()
 	if err != nil {
@@ -28,7 +33,7 @@ func DashboardTasks() (map[string]bool, error) {
 	return parseDashboardTasks(out)
 }
 
-func parseDashboardTasks(out []byte) (map[string]bool, error) {
+func parseDashboardTasks(out []byte) (map[string]TaskState, error) {
 	var issues []struct {
 		Body string `json:"body"`
 		URL  string `json:"url"`
@@ -36,7 +41,7 @@ func parseDashboardTasks(out []byte) (map[string]bool, error) {
 	if err := json.Unmarshal(out, &issues); err != nil {
 		return nil, fmt.Errorf("parse gh issue list output: %w", err)
 	}
-	completed := make(map[string]bool)
+	states := make(map[string]TaskState)
 	seenSlugs := make(map[string]bool, len(issues))
 	for _, is := range issues {
 		doc, err := dashboard.Parse(is.Body)
@@ -48,8 +53,8 @@ func parseDashboardTasks(out []byte) (map[string]bool, error) {
 		}
 		seenSlugs[doc.Slug] = true
 		for _, item := range doc.Tasks {
-			completed[taskKey(doc.Slug, item.ID)] = item.Done
+			states[taskKey(doc.Slug, item.ID)] = TaskState{Done: item.Done, Assignee: item.Assignee}
 		}
 	}
-	return completed, nil
+	return states, nil
 }

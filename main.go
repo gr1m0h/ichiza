@@ -199,13 +199,13 @@ func cmdRemind(args []string) error {
 			return fmt.Errorf("--today: %w", err)
 		}
 	}
-	completed, err := remind.DashboardTasks()
+	taskStates, err := remind.DashboardTasks()
 	if err != nil {
-		return fmt.Errorf("dashboard issue の完了状態を取得: %w", err)
+		return fmt.Errorf("dashboard issue の実行状態を取得: %w", err)
 	}
 	digests, err := remind.Collect(remind.Options{
 		EventsDir: cfg.EventsDir, Now: now, WindowDays: *days,
-		CompletedTasks: completed,
+		TaskStates: taskStates,
 	})
 	if err != nil {
 		return err

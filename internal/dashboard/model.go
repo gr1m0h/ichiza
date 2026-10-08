@@ -6,7 +6,8 @@ import "github.com/gr1m0h/ichiza/internal/task"
 
 type Item struct {
 	task.Task
-	Done bool
+	Done           bool
+	AssigneeSource string
 }
 
 type Document struct {

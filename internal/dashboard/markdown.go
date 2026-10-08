@@ -21,10 +21,11 @@ var (
 )
 
 type metadata struct {
-	ID       string   `json:"id"`
-	Due      string   `json:"due"`
-	Assignee string   `json:"assignee,omitempty"`
-	Labels   []string `json:"labels,omitempty"`
+	ID             string   `json:"id"`
+	Due            string   `json:"due"`
+	Assignee       string   `json:"assignee,omitempty"`
+	AssigneeSource string   `json:"assignee_source,omitempty"`
+	Labels         []string `json:"labels,omitempty"`
 }
 
 func Render(doc Document) (string, error) {
@@ -48,7 +49,7 @@ func Render(doc Document) (string, error) {
 		seen[item.ID] = true
 		meta, err := json.Marshal(metadata{
 			ID: item.ID, Due: item.Due.Format("2006-01-02"),
-			Assignee: item.Assignee, Labels: item.Labels,
+			Assignee: item.Assignee, AssigneeSource: item.AssigneeSource, Labels: item.Labels,
 		})
 		if err != nil {
 			return "", fmt.Errorf("task %q metadata: %w", item.ID, err)
@@ -140,9 +141,12 @@ func Parse(body string) (Document, error) {
 		if match[2] != meta.Due || match[4] != meta.Assignee {
 			return Document{}, fmt.Errorf("task %q visible metadata does not match marker", meta.ID)
 		}
+		if meta.AssigneeSource != "" && meta.AssigneeSource != "runtime" {
+			return Document{}, fmt.Errorf("task %q has unsupported assignee source %q", meta.ID, meta.AssigneeSource)
+		}
 		doc.Tasks = append(doc.Tasks, Item{Task: task.Task{
 			ID: meta.ID, Title: match[3], Due: due, Assignee: meta.Assignee, Labels: meta.Labels,
-		}, Done: strings.EqualFold(match[1], "x")})
+		}, Done: strings.EqualFold(match[1], "x"), AssigneeSource: meta.AssigneeSource})
 	}
 	return Document{}, fmt.Errorf("missing tasks end marker")
 }
@@ -157,15 +161,21 @@ func Merge(current string, desired Document) (string, error) {
 	if existing.Slug != desired.Slug {
 		return "", fmt.Errorf("dashboard slug %q does not match desired slug %q", existing.Slug, desired.Slug)
 	}
-	completed := make(map[string]bool, len(existing.Tasks))
+	existingByID := make(map[string]Item, len(existing.Tasks))
 	for _, item := range existing.Tasks {
-		completed[item.ID] = item.Done
+		existingByID[item.ID] = item
 	}
 	merged := desired
 	merged.Tasks = make([]Item, len(desired.Tasks))
 	copy(merged.Tasks, desired.Tasks)
 	for i := range merged.Tasks {
-		merged.Tasks[i].Done = completed[merged.Tasks[i].ID]
+		if existing, ok := existingByID[merged.Tasks[i].ID]; ok {
+			merged.Tasks[i].Done = existing.Done
+			if existing.AssigneeSource == "runtime" {
+				merged.Tasks[i].Assignee = existing.Assignee
+				merged.Tasks[i].AssigneeSource = existing.AssigneeSource
+			}
+		}
 	}
 	rendered, err := Render(merged)
 	if err != nil {

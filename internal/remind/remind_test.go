@@ -91,7 +91,7 @@ func TestCollectAllClosed(t *testing.T) {
 	})
 	digests, err := Collect(Options{
 		EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7,
-		CompletedTasks: map[string]bool{taskKey("done-1", "done"): true},
+		TaskStates: map[string]TaskState{taskKey("done-1", "done"): {Done: true}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func TestCollectSkipsCheckedDashboardTasks(t *testing.T) {
 	})
 	digests, err := Collect(Options{
 		EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7,
-		CompletedTasks: map[string]bool{taskKey("hiroshima-1", "venue"): true},
+		TaskStates: map[string]TaskState{taskKey("hiroshima-1", "venue"): {Done: true}},
 	})
 	if err != nil {
 		t.Fatal(err)

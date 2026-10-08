@@ -86,6 +86,8 @@ registry:
 GitHub login とメールは重複不可です。メールは小文字へ正規化されます。
 Web は Cloudflare Access policy と `members.email` の両方に一致する運営者だけを許可します。
 `ichiza web-config` は Web に必要な email と GitHub login だけを JSON 出力します。
+Webのイベント詳細とMy Pageでは、認証済みの運営者がこの `members.github` の一覧からタスク担当者を選択できます。
+「未設定」を選ぶと担当を外し、変更はDashboard Issueのタスク行とメタデータへ反映されます。
 
 ### defaults
 
@@ -128,7 +130,7 @@ tasks:
 | `id` | 必須。一意な小文字英数字・ハイフンの ID。Dashboard と Web の更新に使用 |
 | `title` | Dashboard に表示するタスク名 |
 | `due` | 開催日からのオフセット。`-30d`（30日前）/ `-2w`（2週間前）/ `0d`（当日）/ `3d`(3日後)。`d` = 日、`w` = 週 |
-| `assignee` | 担当者の GitHub login。`members.github` と対応させる |
+| `assignee` | 初期担当者の GitHub login。`members.github` と対応させる。イベント作成後の現在担当者はDashboard Issueで管理 |
 | `labels` | タスク分類。**`announce` は特別扱い**: リマインド通知に X の投稿画面を開くリンクが付く |
 | `modes` | 展開条件。指定したモード（`onsite` / `hybrid` / `online`）のイベントのときだけタスク化される。省略時は常に展開 |
 | `body` | Dashboard のタスク直下に置く markdown。入れ子チェックボックスは完了判定に含まれない |
@@ -138,9 +140,9 @@ tasks:
 - **最長オフセットがイベント作成の締切を決めます**。`-35d` のタスクがあるなら、開催日の
   35 日以上前に作成しないと生成直後から期限超過になります
 - 展開されたタスクは期限順にソートされ、1 イベント = 1 Dashboard Issue にまとまります
-- 完了状態は Dashboard の最上位チェックボックスだけが持ちます。task ID は作成後も安定させます
+- 完了状態とイベント作成後の現在担当者は Dashboard Issue が持ちます。task ID は作成後も安定させます
 - 作成済みイベントの `event.yaml` / `tasks.yaml` を変更したら `ichiza dashboard sync --slug <slug>` で反映します。
-  sync は task ID ごとの完了状態と Notes を保持します
+  sync は task ID ごとの完了状態・Webで変更した担当者・Notes を保持します
 - 振り返り（KPT）で出た運営改善は lifecycle.yaml に反映すると次回のイベント作成から自動で効きます
 - 定期開催なら「次回イベントの作成」タスク（`due: 105d` など正のオフセット）を
   入れておくと、開催サイクル自体がリマインドに乗ります

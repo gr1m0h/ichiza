@@ -32,7 +32,7 @@ export class AccessError extends Error {
   }
 }
 
-function parseMembers(value: string): readonly Operator[] {
+export function parseMembers(value: string): readonly Operator[] {
   try {
     const parsed: unknown = JSON.parse(value)
     if (!Array.isArray(parsed)) throw new Error('members must be an array')

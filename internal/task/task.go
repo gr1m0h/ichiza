@@ -1,6 +1,7 @@
 // Package task owns the on-disk schema of tasks.yaml — the dated task
 // definitions scaffold writes and the event Dashboard Issue renders.
-// Completion state is deliberately absent: the Dashboard checkbox owns it.
+// Completion and runtime assignment state are deliberately absent: the
+// Dashboard Issue owns them after an event is created.
 package task
 
 import (
