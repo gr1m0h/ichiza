@@ -60,7 +60,7 @@ $ ichiza new ... --dashboard      # 1イベント = 1 Dashboard Issueを作成
 
 $ ichiza remind [--notify slack]  # 期限超過 + 7日以内のタスクを表示 / Slack 通知
 $ ichiza dashboard reconcile --issue 42 # 全完了ならclose、未完了ならreopen
-$ ichiza dashboard sync --slug tokyo-3  # 定義を反映し、完了状態とNotesを保持
+$ ichiza dashboard sync --slug tokyo-3  # 定義を反映し、完了状態・現在担当者・Notesを保持
 $ ichiza registry --slug tokyo-3  # 募集ページ本文を生成（connpass コピペ用）
 
 $ export CONNPASS_API_KEY=...     # connpass サポートへの申請制
