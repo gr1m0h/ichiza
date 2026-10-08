@@ -30,7 +30,12 @@ describe('GitHubClient', () => {
     expect(dashboards[0]?.slug).toBe('hiroshima-3')
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.github.com/repos/gr1m0h/community/issues?state=all&labels=ichiza%3Aevent&per_page=100',
-      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer secret' }) }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer secret',
+          'User-Agent': 'ichiza-web',
+        }),
+      }),
     )
   })
 
