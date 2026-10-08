@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # <target-repo>/.github/workflows/security.yml
 name: security
 on:
