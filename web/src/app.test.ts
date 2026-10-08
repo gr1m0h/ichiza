@@ -115,6 +115,9 @@ describe('ichiza web', () => {
     expect(page).toContain('今日')
     expect(page).toContain('<select name="assignee">')
     expect(page).toContain('<option value="alice" selected>alice</option>')
+
+    const savedPage = await (await app.request('http://localhost/events/hiroshima-3?saved=1')).text()
+    expect(savedPage).toContain('保存しました。GitHub Issueに反映されています。')
   })
 
   it('returns useful empty and not-found pages', async () => {
