@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.2.1](https://github.com/gr1m0h/ichiza/compare/v0.2.0...v0.2.1) - 2026-10-08
+
+- chore(deps): update songmu/tagpr action to v1.21.2 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/10
+- chore(deps): update dependency node to v24 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/14
+- chore(deps): update actions/setup-node action to v7 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/11
+- chore(deps): update actions/setup-go action to v7 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/6
+- chore(deps): update actions/checkout action to v7 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/5
+- fix: Disable invalid npm cache for web deploy action by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/12
+- ci: Lock Actions and add runtime monitoring by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/15
+- chore: sync baseline files from gr1m0h/.github by @gr1m0h-baseline[bot] in https://github.com/gr1m0h/ichiza/pull/4
+
 ## [v0.2.0](https://github.com/gr1m0h/ichiza/compare/v0.1.1...v0.2.0) - 2026-10-07
 
 - chore: sync baseline files from gr1m0h/.github by @gr1m0h-baseline[bot] in https://github.com/gr1m0h/ichiza/pull/1
