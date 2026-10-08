@@ -42,10 +42,10 @@ func writeEventDir(t *testing.T, eventsDir, slug, title, dateStr, connpass strin
 func TestCollect(t *testing.T) {
 	eventsDir := filepath.Join(t.TempDir(), "events")
 	writeEventDir(t, eventsDir, "hiroshima-1", "SRE Lounge Hiroshima #1", "2026-10-30", "", []task.Task{
-		{Title: "期限超過タスク", Due: date(t, "2026-10-25")},
-		{Title: "本日期限タスク", Due: date(t, "2026-10-27")},
-		{Title: "期限内タスク", Due: date(t, "2026-10-30")},
-		{Title: "期限外タスク", Due: date(t, "2026-11-10")},
+		{ID: "overdue", Title: "期限超過タスク", Due: date(t, "2026-10-25")},
+		{ID: "today", Title: "本日期限タスク", Due: date(t, "2026-10-27")},
+		{ID: "soon", Title: "期限内タスク", Due: date(t, "2026-10-30")},
+		{ID: "later", Title: "期限外タスク", Due: date(t, "2026-11-10")},
 	})
 	// Directories without tasks.yaml are skipped
 	if err := os.MkdirAll(filepath.Join(eventsDir, "not-an-event"), 0o755); err != nil {
@@ -87,17 +87,38 @@ func TestCollect(t *testing.T) {
 func TestCollectAllClosed(t *testing.T) {
 	eventsDir := filepath.Join(t.TempDir(), "events")
 	writeEventDir(t, eventsDir, "done-1", "Done", "2026-10-30", "", []task.Task{
-		{Title: "済", Due: date(t, "2026-10-28")},
+		{ID: "done", Title: "済", Due: date(t, "2026-10-28")},
 	})
 	digests, err := Collect(Options{
 		EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7,
-		ClosedIssues: map[string]bool{taskKey("done-1", "2026-10-28", "済"): true},
+		CompletedTasks: map[string]bool{taskKey("done-1", "done"): true},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(digests) != 0 {
 		t.Errorf("got %d digests, want 0", len(digests))
+	}
+}
+
+func TestCollectSkipsCheckedDashboardTasks(t *testing.T) {
+	eventsDir := t.TempDir()
+	writeEventDir(t, eventsDir, "hiroshima-1", "SRE Lounge Hiroshima #1", "2026-10-30", "", []task.Task{
+		{ID: "venue", Title: "会場最終確認", Due: date(t, "2026-10-25")},
+		{ID: "announce", Title: "直前リマインド", Due: date(t, "2026-10-27")},
+	})
+	digests, err := Collect(Options{
+		EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7,
+		CompletedTasks: map[string]bool{taskKey("hiroshima-1", "venue"): true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(digests) != 1 || len(digests[0].Items) != 1 {
+		t.Fatalf("got %+v, want 1 digest with 1 item", digests)
+	}
+	if got := digests[0].Items[0].Task.ID; got != "announce" {
+		t.Errorf("remaining task id = %q, want announce", got)
 	}
 }
 
@@ -123,16 +144,17 @@ func TestMessage(t *testing.T) {
 	msg := Message(now, []EventDigest{{
 		Event: e,
 		Items: []Item{
-			{Task: task.Task{Title: "会場最終確認", Due: date(t, "2026-10-25")}, DaysLeft: -2},
+			{Task: task.Task{Title: "会場最終確認", Due: date(t, "2026-10-25"), Assignee: "alice"}, DaysLeft: -2},
 			{Task: task.Task{Title: "直前リマインド", Due: date(t, "2026-10-27"), Labels: []string{"announce"}}, DaysLeft: 0},
 			{Task: task.Task{Title: "配信リハ", Due: date(t, "2026-10-30"), Labels: []string{"streaming"}}, DaysLeft: 3},
 		},
-	}})
+	}}, map[string]string{"alice": "U012ABC"})
 
 	for _, want := range []string{
 		"2026-10-27",
 		"SRE Lounge Hiroshima #1",
 		"期限超過 2日", "会場最終確認",
+		"<@U012ABC>",
 		"本日期限", "直前リマインド",
 		"あと3日", "配信リハ",
 	} {

@@ -1,0 +1,6 @@
+ICHIZA_REPOSITORY="owner/community-operations"
+ICHIZA_GITHUB_TOKEN="fine-grained-token"
+ICHIZA_MEMBERS='[{"email":"operator@example.com","github":"operator"}]'
+ICHIZA_TIMEZONE="Asia/Tokyo"
+CF_ACCESS_TEAM_DOMAIN="your-team.cloudflareaccess.com"
+CF_ACCESS_AUD="cloudflare-access-application-audience"

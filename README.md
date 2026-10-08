@@ -8,7 +8,7 @@ Community event operations as Code — a CLI & GitHub Actions platform.
 > as the tool targets the Japanese meetup ecosystem (connpass).
 
 勉強会・ミートアップ運営の CLI & GitHub Actions プラットフォーム。
-イベント定義（event.yaml）から告知・リマインド・タスク管理を派生させます。
+イベント定義（event.yaml）から告知・リマインド・Dashboard管理を派生させます。
 
 ## はじめる
 
@@ -27,8 +27,8 @@ $ gh secret set SLACK_WEBHOOK_URL --repo <owner>/<repo>
 ```
 
 イベント作成は Actions タブ → **ichiza new** → **Run workflow**。
-`events/<slug>/event.yaml` + `tasks.yaml` の PR と、開催日から逆算した期限つき
-GitHub Issues + マイルストーンが生成されます。以降は event.yaml が SSoT。
+`events/<slug>/event.yaml` + `tasks.yaml` のPRと、開催日から逆算したタスクを持つ
+Dashboard Issueが1件生成されます。完了操作はDashboardのCheckboxで行います。
 セットアップの詳細と日々の運用は
 [starter の README](https://github.com/gr1m0h/ichiza-starter) を参照してください。
 
@@ -37,10 +37,13 @@ GitHub Issues + マイルストーンが生成されます。以降は event.yam
 ```text
 gr1m0h/ichiza          # 本体: CLI + composite actions
 ├── actions/setup      # CLI インストール
-├── actions/new        # イベント作成（scaffold → PR + Issues + 募集ページ本文）
+├── actions/new        # イベント作成（scaffold → PR + Dashboard Issue）
+├── actions/dashboard  # Checkbox完了状態に応じたIssue close/reopen
 ├── actions/remind     # 期限リマインド（cron）
 ├── actions/registry   # 募集ページ本文の再生成（event.yaml 更新時）
-└── actions/watch      # 申込数ウォッチ（cron / connpass API v2）
+├── actions/watch      # 申込数ウォッチ（cron / connpass API v2）
+├── actions/web-deploy # 共通Webを利用者のCloudflare Workerへdeploy
+└── web                # Hono製private Webコックピット
 
 gr1m0h/ichiza-starter  # コミュニティが複製するテンプレート（template repository）
 ```
@@ -53,23 +56,37 @@ Actions の中身は同じ CLI なので、ローカルでも実行できます�
 $ go install github.com/gr1m0h/ichiza@latest
 
 $ ichiza new --slug tokyo-3 --title "Your Meetup #3" --date 2026-11-28
-$ ichiza new ... --issues         # gh CLI 経由で期限つき Issues も一括生成
+$ ichiza new ... --dashboard      # 1イベント = 1 Dashboard Issueを作成
 
 $ ichiza remind [--notify slack]  # 期限超過 + 7日以内のタスクを表示 / Slack 通知
+$ ichiza dashboard reconcile --issue 42 # 全完了ならclose、未完了ならreopen
+$ ichiza dashboard sync --slug tokyo-3  # 定義を反映し、完了状態とNotesを保持
 $ ichiza registry --slug tokyo-3  # 募集ページ本文を生成（connpass コピペ用）
 
 $ export CONNPASS_API_KEY=...     # connpass サポートへの申請制
 $ ichiza watch [--notify slack]   # 開催前イベントの申込数 / 補欠 / 受付状態
 ```
 
-- タスク管理は 1 タスク = 1 Issue（期限入りタイトル + イベントごとのマイルストーン）。
-  完了状態は Issue の open / close が持ち、閉じた Issue のタスクはリマインド対象外
-  （gh 経由で照合。tasks.yaml は「何をいつまでに」の定義のみで完了状態を持たない）
+- タスク管理は1イベント = 1 Dashboard Issue。各タスクはトップレベルCheckboxで、
+  Checkboxだけが完了状態の正本です。GitHub Projectsでは1イベントを1カードとして扱えます。
+- `dashboard sync` は event/tasks 定義を再反映し、task ID ごとの完了状態と Notes を保持
 - `remind` は announce ラベルのタスクに X の投稿画面を開く intent URL を添付
 - `registry` は connpass に書き込み API がないため「コピーして新規作成 → ペースト」
   まで人間の作業を圧縮する設計。本文テンプレートは運営リポジトリ側でカスタマイズ可能
 - `watch` は `registry.type` で adapter を選択。connpass 以外のサービスは
   Fetcher adapter の追加で対応
+
+## Web コックピット（任意・alpha）
+
+`web/` は Hono + Cloudflare Workers のDBなし構成です。GitHubのDashboard Issueを正本として、
+イベント一覧・詳細・My Page・期限状態・チェック操作を提供します。運営リポジトリ側は
+starterの `ichiza-web.yml` から共通の `actions/web-deploy` を呼ぶだけで、Web実装を複製しません。
+
+全画面をCloudflare Accessで保護し、認証メールを `ichiza.yaml` の `members.email` と照合します。
+カスタムドメインは不要で、`workers.dev` URLを利用できます。alphaでは対象リポジトリ1件、
+Issues read/write、Metadata read-onlyに限定したfine-grained PATをWorker secretとして使います。
+正式版ではGitHub Appへ移行する想定です。詳しい導入手順は
+[ichiza-starter](https://github.com/gr1m0h/ichiza-starter)を参照してください。
 
 ## Lifecycle テンプレート
 
@@ -78,10 +95,12 @@ $ ichiza watch [--notify slack]   # 開催前イベントの申込数 / 補欠 /
 
 ```yaml
 tasks:
-  - title: connpassページ公開
+  - id: publish-page
+    title: connpassページ公開
     due: -30d
     labels: [announce]
-  - title: 配信リハ（音声経路テスト）
+  - id: rehearsal
+    title: 配信リハ（音声経路テスト）
     due: -3d
     modes: [hybrid, online]
 ```

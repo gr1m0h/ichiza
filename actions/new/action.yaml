@@ -1,5 +1,5 @@
 name: ichiza new
-description: Scaffold a new event (event.yaml + tasks.yaml + issues) and open a PR
+description: Scaffold a new event, create its Dashboard Issue, and open a PR
 inputs:
   slug: { description: event slug, required: true }
   title: { description: event title, required: true }
@@ -10,8 +10,8 @@ inputs:
   lifecycle:
     description: "lifecycle template path (default: ichiza.yaml lifecycle)"
     default: ""
-  create-issues:
-    description: also create GitHub issues via gh
+  create-dashboard:
+    description: create the event Dashboard Issue via gh
     default: "true"
   version:
     description: ichiza version
@@ -24,13 +24,19 @@ runs:
         version: ${{ inputs.version }}
     # Pass inputs via env instead of expanding them into the shell (script injection guard)
     - run: |
-        ichiza new \
-          --slug "$INPUT_SLUG" \
-          --title "$INPUT_TITLE" \
-          --date "$INPUT_DATE" \
-          --mode "$INPUT_MODE" \
-          ${INPUT_LIFECYCLE:+--lifecycle "$INPUT_LIFECYCLE"} \
-          $([ "$INPUT_ISSUES" = "true" ] && echo --issues)
+        args=(
+          --slug "$INPUT_SLUG"
+          --title "$INPUT_TITLE"
+          --date "$INPUT_DATE"
+          --mode "$INPUT_MODE"
+        )
+        if [ -n "$INPUT_LIFECYCLE" ]; then
+          args+=(--lifecycle "$INPUT_LIFECYCLE")
+        fi
+        if [ "$INPUT_DASHBOARD" = "true" ]; then
+          args+=(--dashboard)
+        fi
+        ichiza new "${args[@]}"
       shell: bash
       env:
         INPUT_SLUG: ${{ inputs.slug }}
@@ -38,7 +44,7 @@ runs:
         INPUT_DATE: ${{ inputs.date }}
         INPUT_MODE: ${{ inputs.mode }}
         INPUT_LIFECYCLE: ${{ inputs.lifecycle }}
-        INPUT_ISSUES: ${{ inputs.create-issues }}
+        INPUT_DASHBOARD: ${{ inputs.create-dashboard }}
         GH_TOKEN: ${{ env.GH_TOKEN }}
     # connpass has no write API: emit a paste-ready page draft instead
     # (copy the previous event on connpass → paste this → publish)

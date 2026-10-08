@@ -1,38 +1,52 @@
 // Package task owns the on-disk schema of tasks.yaml — the dated task
-// list scaffold writes and remind reads. Completion state is not here:
-// it lives in GitHub Issues (close the issue), so tasks.yaml stays a
-// pure definition of what is due when. Drop a line to cancel a task.
+// definitions scaffold writes and the event Dashboard Issue renders.
+// Completion state is deliberately absent: the Dashboard checkbox owns it.
 package task
 
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Task struct {
-	Title  string
-	Due    time.Time
-	Labels []string
+	ID       string
+	Title    string
+	Due      time.Time
+	Assignee string
+	Labels   []string
+	Body     string
 }
 
 // doc is the YAML representation: dates stay human-readable strings.
-// Legacy files may still carry a done: field; it is ignored on load.
 type doc struct {
-	Title  string   `yaml:"title"`
-	Due    string   `yaml:"due"`
-	Labels []string `yaml:"labels,omitempty"`
+	ID       string   `yaml:"id"`
+	Title    string   `yaml:"title"`
+	Due      string   `yaml:"due"`
+	Assignee string   `yaml:"assignee,omitempty"`
+	Labels   []string `yaml:"labels,omitempty"`
+	Body     string   `yaml:"body,omitempty"`
 }
+
+var validID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 
 func Save(path string, tasks []Task) error {
 	docs := make([]doc, 0, len(tasks))
+	seen := make(map[string]bool, len(tasks))
 	for _, t := range tasks {
+		if err := validateID(t.ID, seen); err != nil {
+			return fmt.Errorf("task %q: %w", t.Title, err)
+		}
 		docs = append(docs, doc{
-			Title:  t.Title,
-			Due:    t.Due.Format("2006-01-02"),
-			Labels: t.Labels,
+			ID:       t.ID,
+			Title:    t.Title,
+			Due:      t.Due.Format("2006-01-02"),
+			Assignee: t.Assignee,
+			Labels:   t.Labels,
+			Body:     t.Body,
 		})
 	}
 	b, err := yaml.Marshal(map[string]any{"tasks": docs})
@@ -54,12 +68,30 @@ func Load(path string) ([]Task, error) {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	tasks := make([]Task, 0, len(f.Tasks))
+	seen := make(map[string]bool, len(f.Tasks))
 	for _, d := range f.Tasks {
 		due, err := time.Parse("2006-01-02", d.Due)
 		if err != nil {
 			return nil, fmt.Errorf("%s: task %q: %w", path, d.Title, err)
 		}
-		tasks = append(tasks, Task{Title: d.Title, Due: due, Labels: d.Labels})
+		if err := validateID(d.ID, seen); err != nil {
+			return nil, fmt.Errorf("%s: task %q: %w", path, d.Title, err)
+		}
+		tasks = append(tasks, Task{
+			ID: d.ID, Title: d.Title, Due: due, Assignee: d.Assignee,
+			Labels: d.Labels, Body: d.Body,
+		})
 	}
 	return tasks, nil
+}
+
+func validateID(id string, seen map[string]bool) error {
+	if !validID.MatchString(id) {
+		return fmt.Errorf("invalid id %q (want lowercase letters, numbers, and hyphens)", id)
+	}
+	if seen[id] {
+		return fmt.Errorf("duplicate id %q", id)
+	}
+	seen[id] = true
+	return nil
 }

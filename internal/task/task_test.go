@@ -19,16 +19,14 @@ func date(t *testing.T, s string) time.Time {
 
 func TestLoad(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "tasks.yaml")
-	// done: is a legacy field (completion moved to GitHub Issues);
-	// files that still carry it must load without error.
 	src := `tasks:
-  - title: connpassページ公開
+  - id: publish-page
+    title: connpassページ公開
     due: "2026-09-30"
     labels: [announce]
-    done: false
-  - title: 会場確保
+  - id: venue
+    title: 会場確保
     due: "2026-09-25"
-    done: true
 `
 	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
@@ -49,6 +47,9 @@ func TestLoad(t *testing.T) {
 	if len(tasks[0].Labels) != 1 || tasks[0].Labels[0] != "announce" {
 		t.Errorf("labels = %v", tasks[0].Labels)
 	}
+	if tasks[0].ID != "publish-page" {
+		t.Errorf("id = %q", tasks[0].ID)
+	}
 }
 
 func TestLoadErrors(t *testing.T) {
@@ -58,6 +59,9 @@ func TestLoadErrors(t *testing.T) {
 	}{
 		{"bad date", "tasks:\n  - title: x\n    due: not-a-date\n"},
 		{"broken yaml", "tasks: ["},
+		{"missing id", "tasks:\n  - title: x\n    due: '2026-10-01'\n"},
+		{"invalid id", "tasks:\n  - id: INVALID\n    title: x\n    due: '2026-10-01'\n"},
+		{"duplicate id", "tasks:\n  - id: same\n    title: x\n    due: '2026-10-01'\n  - id: same\n    title: y\n    due: '2026-10-02'\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -80,8 +84,8 @@ func TestLoadErrors(t *testing.T) {
 func TestSaveLoadRoundtrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "tasks.yaml")
 	in := []Task{
-		{Title: "告知", Due: date(t, "2026-10-01"), Labels: []string{"announce"}},
-		{Title: "設営", Due: date(t, "2026-10-30")},
+		{ID: "announce", Title: "告知", Due: date(t, "2026-10-01"), Assignee: "alice", Labels: []string{"announce"}, Body: "告知文を確認する"},
+		{ID: "setup", Title: "設営", Due: date(t, "2026-10-30")},
 	}
 	if err := Save(path, in); err != nil {
 		t.Fatal(err)
@@ -94,7 +98,7 @@ func TestSaveLoadRoundtrip(t *testing.T) {
 		t.Fatalf("got %d tasks, want %d", len(out), len(in))
 	}
 	for i := range in {
-		if out[i].Title != in[i].Title || !out[i].Due.Equal(in[i].Due) {
+		if out[i].ID != in[i].ID || out[i].Title != in[i].Title || !out[i].Due.Equal(in[i].Due) || out[i].Assignee != in[i].Assignee || out[i].Body != in[i].Body {
 			t.Errorf("task %d = %+v, want %+v", i, out[i], in[i])
 		}
 	}
