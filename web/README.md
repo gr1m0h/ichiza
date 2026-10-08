@@ -25,6 +25,8 @@
 イベント詳細とMy Pageでは、Cloudflare Accessで認証された運営者が `ICHIZA_MEMBERS` に登録されたGitHub loginから担当者を選択できます。
 「未設定」を選ぶと担当を外せます。保存するとDashboard Issueの対象タスクに表示される `@login` とJSONメタデータを同時に更新します。
 完了状態と担当者の更新前にGitHubの `updated_at` を確認し、古い画面からの更新は409にします。
+担当者をWebから変更したタスクには `assignee_source: runtime` が付与されます。
+そのため `ichiza dashboard sync` を実行しても、Issue側の現在担当者・担当解除は維持されます。
 GitHub APIは更新時の条件指定を提供しないため、確認直後の同時編集まで完全には防げない
 best-effortの競合検査です。
 

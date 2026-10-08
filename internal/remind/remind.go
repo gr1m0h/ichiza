@@ -1,5 +1,5 @@
-// Package remind scans events/*/tasks.yaml for tasks that are due soon
-// or overdue and renders a notification message.
+// Package remind scans event definitions and Dashboard Issue runtime state for
+// tasks that are due soon or overdue and renders a notification message.
 package remind
 
 import (
@@ -17,10 +17,10 @@ import (
 )
 
 type Options struct {
-	EventsDir      string
-	Now            time.Time
-	WindowDays     int // look-ahead: tasks due within this many days
-	CompletedTasks map[string]bool
+	EventsDir  string
+	Now        time.Time
+	WindowDays int // look-ahead: tasks due within this many days
+	TaskStates map[string]TaskState
 }
 
 type Item struct {
@@ -67,8 +67,12 @@ func Collect(opt Options) ([]EventDigest, error) {
 		}
 		var items []Item
 		for _, t := range tasks {
-			if opt.CompletedTasks[taskKey(e.Event.Slug, t.ID)] {
+			state, exists := opt.TaskStates[taskKey(e.Event.Slug, t.ID)]
+			if exists && state.Done {
 				continue
+			}
+			if exists {
+				t.Assignee = state.Assignee
 			}
 			days := int(t.Due.Sub(now).Hours() / 24)
 			if days > opt.WindowDays {

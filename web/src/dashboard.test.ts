@@ -128,18 +128,18 @@ describe('setDashboardTaskAssignee', () => {
   it('assigns one managed task and keeps metadata in sync', () => {
     const updated = setDashboardTaskAssignee(dashboardBody, 'announce', 'bob')
 
-    expect(updated).toContain(
-      '- [ ] **2026-10-25** 参加者へ告知する · @bob <!-- ichiza-task:{"id":"announce","due":"2026-10-25","assignee":"bob","labels":["announce"]} -->',
-    )
+    expect(updated).toContain('- [ ] **2026-10-25** 参加者へ告知する · @bob')
+    expect(updated).toContain('"assignee":"bob"')
+    expect(updated).toContain('"assignee_source":"runtime"')
     expect(updated).toContain('· @alice')
   })
 
   it('unassigns one managed task', () => {
     const updated = setDashboardTaskAssignee(dashboardBody, 'venue', '')
 
-    expect(updated).toContain(
-      '- [x] **2026-10-20** 会場を確定する <!-- ichiza-task:{"id":"venue","due":"2026-10-20","labels":["venue"]} -->',
-    )
+    expect(updated).toContain('- [x] **2026-10-20** 会場を確定する <!-- ichiza-task:')
+    expect(updated).toContain('"id":"venue"')
+    expect(updated).toContain('"assignee_source":"runtime"')
   })
 
   it('rejects an invalid GitHub login', () => {

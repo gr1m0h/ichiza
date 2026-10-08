@@ -24,15 +24,36 @@ func TestParseDashboardTasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	completed, err := parseDashboardTasks(out)
+	states, err := parseDashboardTasks(out)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !completed[taskKey("hiroshima-1", "venue")] {
+	if !states[taskKey("hiroshima-1", "venue")].Done {
 		t.Error("checked dashboard task should be complete")
 	}
-	if completed[taskKey("hiroshima-1", "announce")] {
+	if states[taskKey("hiroshima-1", "announce")].Done {
 		t.Error("unchecked dashboard task should not be complete")
+	}
+}
+
+func TestParseDashboardTasksReadsRuntimeAssignee(t *testing.T) {
+	body, err := dashboard.Render(dashboard.Document{
+		Slug: "hiroshima-1", Title: "SRE Lounge Hiroshima #1", Date: "2026-11-01",
+		Tasks: []dashboard.Item{{Task: task.Task{ID: "venue", Title: "会場最終確認", Due: issueDate(t, "2026-10-25"), Assignee: "bob"}, AssigneeSource: "runtime"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := json.Marshal([]map[string]string{{"body": body, "url": "https://github.example/events/1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := parseDashboardTasks(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := states[taskKey("hiroshima-1", "venue")].Assignee; got != "bob" {
+		t.Fatalf("assignee = %q, want bob", got)
 	}
 }
 

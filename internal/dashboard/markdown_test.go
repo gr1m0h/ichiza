@@ -108,6 +108,58 @@ func TestMergePreservesCompletionAndNotes(t *testing.T) {
 	}
 }
 
+func TestMergePreservesRuntimeAssignee(t *testing.T) {
+	current, err := Render(Document{
+		Slug: "event-1", Title: "Event", Date: "2026-11-01",
+		Tasks: []Item{{Task: task.Task{ID: "keep", Title: "Task", Due: mustDate(t, "2026-10-20"), Assignee: "bob"}, AssigneeSource: "runtime"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	desired := Document{
+		Slug: "event-1", Title: "Event", Date: "2026-11-01",
+		Tasks: []Item{{Task: task.Task{ID: "keep", Title: "Task", Due: mustDate(t, "2026-10-20"), Assignee: "alice"}}},
+	}
+
+	merged, err := Merge(current, desired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := Parse(merged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Tasks[0].Assignee != "bob" || parsed.Tasks[0].AssigneeSource != "runtime" {
+		t.Fatalf("runtime assignee was not preserved: %+v", parsed.Tasks[0])
+	}
+}
+
+func TestMergePreservesRuntimeUnassignment(t *testing.T) {
+	current, err := Render(Document{
+		Slug: "event-1", Title: "Event", Date: "2026-11-01",
+		Tasks: []Item{{Task: task.Task{ID: "keep", Title: "Task", Due: mustDate(t, "2026-10-20")}, AssigneeSource: "runtime"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	desired := Document{
+		Slug: "event-1", Title: "Event", Date: "2026-11-01",
+		Tasks: []Item{{Task: task.Task{ID: "keep", Title: "Task", Due: mustDate(t, "2026-10-20"), Assignee: "alice"}}},
+	}
+
+	merged, err := Merge(current, desired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := Parse(merged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Tasks[0].Assignee != "" || parsed.Tasks[0].AssigneeSource != "runtime" {
+		t.Fatalf("runtime unassignment was not preserved: %+v", parsed.Tasks[0])
+	}
+}
+
 func TestParseRejectsBrokenContract(t *testing.T) {
 	tests := []struct {
 		name string

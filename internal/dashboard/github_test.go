@@ -58,7 +58,7 @@ func TestSync(t *testing.T) {
 	}
 	current, err := Render(Document{
 		Slug: slug, Title: "Old event", Date: "2026-11-01",
-		Tasks: []Item{{Task: task.Task{ID: "keep", Title: "Old task", Due: mustDate(t, "2026-10-20")}, Done: true}},
+		Tasks: []Item{{Task: task.Task{ID: "keep", Title: "Old task", Due: mustDate(t, "2026-10-20"), Assignee: "bob"}, Done: true, AssigneeSource: "runtime"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parsed.Title != "Updated event" || parsed.Date != "2026-11-08" || !parsed.Tasks[0].Done {
+	if parsed.Title != "Updated event" || parsed.Date != "2026-11-08" || !parsed.Tasks[0].Done || parsed.Tasks[0].Assignee != "bob" {
 		t.Errorf("synced dashboard = %+v", parsed)
 	}
 	if !strings.Contains(updated, "Notes stay here") {
