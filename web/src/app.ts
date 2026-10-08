@@ -47,7 +47,9 @@ function escapeHtml(value: string): string {
 }
 
 function layout(title: string, content: string): string {
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(title)} · ichiza</title><style>body{font-family:system-ui,sans-serif;max-width:960px;margin:auto;padding:1.25rem;color:#172033;background:#f7f8fb}nav{display:flex;gap:1rem;margin-bottom:2rem}a{color:#2457d6}.card{background:white;border:1px solid #dfe3ec;border-radius:12px;padding:1rem;margin:1rem 0}.danger{color:#b42318;font-weight:700}.muted{color:#667085}.task{display:flex;gap:.75rem;align-items:flex-start;padding:.7rem 0;border-top:1px solid #eef0f4}.task:first-child{border:0}button{min-height:2.5rem}.badge{display:inline-block;padding:.15rem .5rem;border-radius:999px;background:#eef2ff;margin-right:.4rem}@media(max-width:600px){body{padding:.8rem}}</style></head><body><nav><a href="/">イベント</a><a href="/me">My Page</a></nav>${content}</body></html>`
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(title)} · ichiza</title><style>
+  :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f6f8;line-height:1.5}*{box-sizing:border-box}body{margin:0;padding:2rem 1.25rem}main,.shell{max-width:1120px;margin:auto}nav{max-width:1120px;margin:0 auto 2.5rem;display:flex;gap:1.35rem;align-items:center}nav a{color:#2457d6;font-weight:750;text-decoration:none}nav a:first-child{font-size:1.05rem}a{color:#2457d6}.eyebrow{font-size:.72rem;letter-spacing:.14em;font-weight:850;color:#68778b;text-transform:uppercase}.hero{display:flex;justify-content:space-between;gap:1.5rem;align-items:end;margin:.55rem 0 1.7rem}.hero h1{font-size:clamp(2rem,4vw,3rem);line-height:1.08;letter-spacing:-.045em;margin:0}.hero p{color:#68778b;margin:.65rem 0 0}.pill{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.3rem .65rem;font-size:.75rem;font-weight:800;white-space:nowrap}.pill.green{background:#e4f7ec;color:#147a42}.pill.amber{background:#fff3d7;color:#9a6500}.pill.red{background:#ffe7e7;color:#b42318}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin:0 0 1.5rem}.metric{background:#fff;border:1px solid #e0e6ed;border-radius:1rem;padding:1rem 1.1rem}.metric .label{font-size:.75rem;color:#758397;font-weight:700}.metric .value{font-size:1.65rem;font-weight:850;letter-spacing:-.04em;margin-top:.2rem}.card{background:#fff;border:1px solid #dfe5ec;border-radius:1.1rem;padding:1.4rem;box-shadow:0 10px 30px #182b4308;margin:1rem 0}.card h2{margin:0;font-size:1.15rem;letter-spacing:-.02em}.subtle,.muted{color:#758397}.progress{height:.5rem;background:#e9edf2;border-radius:99px;overflow:hidden}.progress>i{display:block;height:100%;background:#3c6df0;border-radius:inherit}.event-list{display:grid;gap:.8rem}.event{display:grid;grid-template-columns:6px 1fr auto;gap:1rem;align-items:center;padding:1.25rem;background:#fff;border:1px solid #dfe5ec;border-radius:1.05rem;box-shadow:0 10px 30px #182b4308}.event .stripe{height:100%;min-height:5.25rem;border-radius:8px;background:#3c6df0}.event h2{font-size:1.2rem;margin:0 0 .3rem}.event p{margin:0;color:#758397;font-size:.9rem}.event .right{text-align:right}.status-card{border-left:5px solid #199957;padding-left:1.15rem}.status-card.amberline{border-left-color:#d99a18}.status-head{display:flex;justify-content:space-between;gap:1rem;align-items:start}.status-head h2{font-size:1.4rem}.status-list{display:flex;flex-wrap:wrap;gap:.55rem 1.1rem;margin:1.05rem 0 .3rem;color:#405064;font-size:.9rem}.status-list span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#199957;margin-right:8px}.status-foot{color:#758397;font-size:.82rem}.timeline{margin-top:1.7rem}.timeline table{width:100%;border-collapse:collapse}.timeline th,.timeline td{text-align:left;padding:.8rem .75rem;border-bottom:1px solid #e6ebf0;font-size:.88rem}.timeline th{color:#68778b;font-size:.75rem}.task{display:grid;grid-template-columns:1fr auto auto;gap:1rem;align-items:center;padding:1rem 0;border-top:1px solid #edf0f4}.task:first-child{border-top:0}.task-title{font-weight:800}.task-meta{font-size:.82rem;color:#758397;margin-top:.2rem}.task .actions{display:flex;gap:.5rem;align-items:center}.task button,.task select{border:1px solid #cfd7e2;background:#fff;border-radius:9px;min-height:2.25rem;padding:0 .65rem;font:inherit}.task button{font-weight:750;color:#2457d6;border-color:#b9c8f3;background:#f5f7ff}.task button.done{color:#147a42;border-color:#b6e2c9;background:#effaf3}.task select{color:#4b5a6d}.board{background:#fff;border:1px solid #dfe5ec;border-radius:1.1rem;overflow:hidden;box-shadow:0 10px 30px #182b4308}.board-head{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.25rem;border-bottom:1px solid #e7ebf0}.board-head h2{margin:0;font-size:1rem}.board .task{padding:1rem 1.25rem;grid-template-columns:auto 1fr auto auto}.check{width:1.3rem;height:1.3rem;border:2px solid #bdc8d6;border-radius:6px}.check.checked{background:#3c6df0;border-color:#3c6df0;position:relative}.check.checked::after{content:"✓";color:#fff;font-size:.85rem;position:absolute;left:3px;top:-3px;font-weight:800}.danger{color:#b42318;font-weight:750}.empty{color:#758397;padding:1rem 0}@media(max-width:700px){body{padding:.9rem}.metrics{grid-template-columns:repeat(2,1fr)}.hero{display:block}.hero .pill{margin-top:1rem}.task,.board .task{grid-template-columns:1fr;gap:.5rem}.task .actions{justify-content:flex-start}.event{grid-template-columns:5px 1fr}.event .right{text-align:left;grid-column:2}.timeline{overflow:auto}.timeline table{min-width:42rem}}
+  </style></head><body><nav><a href="/">イベント</a><a href="/me">My Page</a></nav>${content}</body></html>`
 }
 
 export function dateInTimeZone(now: Date, timeZone: string): string {
@@ -74,11 +76,31 @@ function health(dashboard: EventDashboard, date: string): string {
   return '順調'
 }
 
-function eventCard(dashboard: EventDashboard, date: string): string {
+function stats(dashboard: EventDashboard, date: string) {
   const completed = dashboard.tasks.filter((task) => task.done).length
+  const open = dashboard.tasks.filter((task) => !task.done)
+  const overdue = open.filter((task) => task.due < date).length
+  const dueToday = open.filter((task) => task.due === date).length
+  return { completed, total: dashboard.tasks.length, overdue, dueToday, progress: dashboard.tasks.length === 0 ? 100 : Math.round((completed / dashboard.tasks.length) * 100) }
+}
+
+function tone(state: string): string {
+  if (state.startsWith('期限超過')) return 'red'
+  if (state === '本日期限あり') return 'amber'
+  return 'green'
+}
+
+function statusPill(label: string, status: string): string {
+  return `<span class="pill ${status}">● ${escapeHtml(label)}</span>`
+}
+
+function eventCard(dashboard: EventDashboard, date: string): string {
+  const { completed, total, overdue, dueToday, progress } = stats(dashboard, date)
   const state = health(dashboard, date)
-  const stateClass = state.startsWith('期限超過') ? 'danger' : ''
-  return `<article class="card"><h2><a href="/events/${encodeURIComponent(dashboard.slug)}">${escapeHtml(dashboard.title)}</a></h2><p class="muted">開催日 ${escapeHtml(dashboard.date)}</p><p><span class="badge ${stateClass}">${escapeHtml(state)}</span>${completed} / ${dashboard.tasks.length} 完了</p></article>`
+  const stateClass = tone(state)
+  const label = state.startsWith('期限超過') ? state : state === '本日期限あり' ? `本日期限あり · 今日の期限 ${dueToday}件` : state
+  const stripe = stateClass === 'red' ? '#b42318' : stateClass === 'amber' ? '#d99a18' : '#199957'
+  return `<article class="event"><div class="stripe" style="background:${stripe}"></div><div><h2><a href="/events/${encodeURIComponent(dashboard.slug)}">${escapeHtml(dashboard.title)}</a></h2><p>${escapeHtml(dashboard.date)} ・ ${completed} / ${total} 完了${overdue > 0 ? ` ・ 期限超過 ${overdue}件` : ''}</p><div class="progress" style="margin-top:.65rem"><i style="width:${progress}%;background:${stripe}"></i></div></div><div class="right">${statusPill(label, stateClass)}</div></article>`
 }
 
 function taskRow(
@@ -88,10 +110,11 @@ function taskRow(
   members: readonly Operator[],
 ): string {
   const state = task.done ? '完了' : task.due < date ? '期限超過' : task.due === date ? '今日' : '予定'
+  const stateClass = task.done ? 'green' : state === '期限超過' ? 'red' : state === '今日' ? 'amber' : 'green'
   const action = `/events/${encodeURIComponent(dashboard.slug)}/tasks/${encodeURIComponent(task.id)}`
   const hidden = `<input type="hidden" name="issueNumber" value="${dashboard.issueNumber}"><input type="hidden" name="expectedUpdatedAt" value="${escapeHtml(dashboard.updatedAt ?? '')}">`
   const options = [`<option value="">未設定</option>`, ...members.map((member) => `<option value="${escapeHtml(member.github)}"${member.github === task.assignee ? ' selected' : ''}>${escapeHtml(member.github)}</option>`)].join('')
-  return `<div class="task"><div><strong>${escapeHtml(task.title)}</strong><br><span class="${state === '期限超過' ? 'danger' : 'muted'}">${state} · ${escapeHtml(task.due)}${task.assignee === undefined ? '' : ` · @${escapeHtml(task.assignee)}`}</span></div><form method="post" action="${action}">${hidden}<input type="hidden" name="done" value="${task.done ? 'false' : 'true'}"><button type="submit">${task.done ? '未完了に戻す' : '完了にする'}</button></form><form method="post" action="${action}">${hidden}<label>担当 <select name="assignee">${options}</select></label><button type="submit">担当を保存</button></form></div>`
+  return `<div class="task"><div><div class="task-title">${escapeHtml(task.title)}</div><div class="task-meta ${state === '期限超過' ? 'danger' : ''}">${state} · ${escapeHtml(task.due)}${task.assignee === undefined ? '' : ` · @${escapeHtml(task.assignee)}`}</div></div><form method="post" action="${action}">${hidden}<input type="hidden" name="done" value="${task.done ? 'false' : 'true'}"><button class="${task.done ? 'done' : ''}" type="submit">${task.done ? '未完了に戻す' : '完了にする'}</button></form><form class="actions" method="post" action="${action}">${hidden}<span class="pill ${stateClass}">${escapeHtml(state)}</span><label>担当 <select name="assignee">${options}</select></label><button type="submit">保存</button></form></div>`
 }
 
 export function createApp(overrides: Partial<AppDependencies> = {}) {
@@ -128,16 +151,25 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
 
   app.get('/', async (context) => {
     const dashboards = await dependencies.repository(context.env).listDashboards()
-    const cards = dashboards.map((dashboard) => eventCard(dashboard, today(dependencies, context.env))).join('')
-    return context.html(layout('イベント', `<h1>イベント</h1>${cards || '<p>イベントはまだありません。</p>'}`))
+    const date = today(dependencies, context.env)
+    const allTasks = dashboards.flatMap((dashboard) => dashboard.tasks)
+    const completed = allTasks.filter((task) => task.done).length
+    const overdue = allTasks.filter((task) => !task.done && task.due < date).length
+    const dueToday = allTasks.filter((task) => !task.done && task.due === date).length
+    const cards = dashboards.map((dashboard) => eventCard(dashboard, date)).join('')
+    const content = `<main><div class="eyebrow">OPERATIONS COCKPIT</div><div class="hero"><div><h1>イベント</h1><p>運営中のイベントを、期限と進捗から確認します。</p></div>${statusPill(overdue > 0 ? '対応が必要' : 'すべて正常', overdue > 0 ? 'red' : 'green')}</div><div class="metrics"><div class="metric"><div class="label">進行中のイベント</div><div class="value">${dashboards.length}</div></div><div class="metric"><div class="label">未完了タスク</div><div class="value">${allTasks.length - completed}</div></div><div class="metric"><div class="label">期限超過</div><div class="value ${overdue > 0 ? 'danger' : ''}">${overdue}</div></div><div class="metric"><div class="label">今日の期限</div><div class="value">${dueToday}</div></div></div><div class="event-list">${cards || '<p class="empty">イベントはまだありません。</p>'}</div></main>`
+    return context.html(layout('イベント', content))
   })
 
   app.get('/events/:slug', async (context) => {
     const dashboards = await dependencies.repository(context.env).listDashboards()
     const dashboard = dashboards.find((candidate) => candidate.slug === context.req.param('slug'))
     if (dashboard === undefined) return context.text('event not found', 404)
-    const rows = dashboard.tasks.map((task) => taskRow(dashboard, task, today(dependencies, context.env), dependencies.members(context.env))).join('')
-    const content = `<h1>${escapeHtml(dashboard.title)}</h1><p class="muted">開催日 ${escapeHtml(dashboard.date)}</p><p><a href="${escapeHtml(dashboard.issueUrl)}">GitHub Dashboard Issue</a></p><section class="card">${rows}</section>`
+    const date = today(dependencies, context.env)
+    const { completed, total, overdue } = stats(dashboard, date)
+    const state = health(dashboard, date)
+    const rows = dashboard.tasks.map((task) => taskRow(dashboard, task, date, dependencies.members(context.env))).join('')
+    const content = `<main><div class="eyebrow">EVENT STATUS</div><div class="hero"><div><h1>${escapeHtml(dashboard.title)}</h1><p>開催日 ${escapeHtml(dashboard.date)} ・ <a href="${escapeHtml(dashboard.issueUrl)}">GitHub Dashboard Issue ↗</a></p></div>${statusPill(state, tone(state))}</div><section class="card status-card ${overdue > 0 ? 'amberline' : ''}"><div class="status-head"><div><h2>運営タスク</h2><p class="subtle">${completed} / ${total} 完了 ・ ${overdue > 0 ? `期限超過 ${overdue}件` : '期限超過なし'}</p></div>${statusPill(total - completed > 0 ? `${total - completed}件対応中` : '完了', overdue > 0 ? 'amber' : 'green')}</div><div class="status-list">${dashboard.tasks.slice(0, 6).map((task) => `<span>${escapeHtml(task.title)}</span>`).join('')}</div><p class="status-foot">${dashboard.tasks.find((task) => !task.done)?.title ? `次の期限：${escapeHtml(dashboard.tasks.find((task) => !task.done)?.title ?? '')} ・ ${escapeHtml(dashboard.tasks.find((task) => !task.done)?.due ?? '')}` : 'すべてのタスクが完了しています'}</p></section><section class="card"><div class="board-head" style="padding:0 0 1rem;border-bottom:1px solid #e7ebf0"><h2>タスク一覧</h2><span class="subtle">期限順</span></div>${rows}</section></main>`
     return context.html(layout(dashboard.title, content))
   })
 
@@ -148,9 +180,11 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
       const assigned = dashboard.tasks.filter((task) => task.assignee === operator.github && !task.done)
       if (assigned.length === 0) return []
       const rows = assigned.map((task) => taskRow(dashboard, task, today(dependencies, context.env), dependencies.members(context.env))).join('')
-      return [`<section class="card"><h2>${escapeHtml(dashboard.title)}</h2>${rows}</section>`]
+      return [`<section class="board"><div class="board-head"><h2>${escapeHtml(dashboard.title)}</h2><span class="subtle">${assigned.length}件</span></div>${rows}</section>`]
     })
-    return context.html(layout('My Page', `<h1>My Page</h1><p>${escapeHtml(operator.github)} さんの担当</p>${cards.join('') || '<p>未完了の担当タスクはありません。</p>'}`))
+    const taskCount = cards.length === 0 ? 0 : dashboards.reduce((count, dashboard) => count + dashboard.tasks.filter((task) => task.assignee === operator.github && !task.done).length, 0)
+    const overdue = dashboards.flatMap((dashboard) => dashboard.tasks).filter((task) => task.assignee === operator.github && !task.done && task.due < today(dependencies, context.env)).length
+    return context.html(layout('My Page', `<main><div class="eyebrow">MY PAGE</div><div class="hero"><div><h1>My Page</h1><p>@${escapeHtml(operator.github)} さんの担当タスク</p></div>${statusPill(overdue > 0 ? '期限超過あり' : '対応中', overdue > 0 ? 'red' : 'green')}</div><div class="metrics"><div class="metric"><div class="label">担当中</div><div class="value">${taskCount}</div></div><div class="metric"><div class="label">期限超過</div><div class="value ${overdue > 0 ? 'danger' : ''}">${overdue}</div></div></div><div style="display:grid;gap:1rem">${cards.join('') || '<p class="empty">未完了の担当タスクはありません。</p>'}</div></main>`))
   })
 
   app.post('/events/:slug/tasks/:taskId', async (context) => {
