@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.2](https://github.com/gr1m0h/ichiza/compare/v0.2.1...v0.2.2) - 2026-10-08
+
+- fix(web): add User-Agent to GitHub API requests by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/16
+
 ## [v0.2.1](https://github.com/gr1m0h/ichiza/compare/v0.2.0...v0.2.1) - 2026-10-08
 
 - chore(deps): update songmu/tagpr action to v1.21.2 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/10
