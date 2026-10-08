@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.3.0](https://github.com/gr1m0h/ichiza/compare/v0.2.4...v0.3.0) - 2026-10-08
+
+- feat(web): improve event operations cockpit by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/23
+
 ## [v0.2.4](https://github.com/gr1m0h/ichiza/compare/v0.2.3...v0.2.4) - 2026-10-08
 
 - chore(deps): update actions/setup-node action to v7.1.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/20
