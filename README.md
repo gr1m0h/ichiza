@@ -110,6 +110,24 @@ tasks:
 要件はすべて設定で表現**が設計原則です。
 全パラメータは [docs/configuration.md](docs/configuration.md) を参照してください。
 
+## GitHub Actions の依存管理
+
+Workflow内のAction依存はGitHub公式の
+[`gh-actions-lock`](https://github.com/github/gh-actions-lock)で
+`.github/workflows/actions.lock`へ固定します。Actionを追加・削除したら次を実行してください。
+
+```console
+$ gh extension install github/gh-actions-lock --pin v0.1.6
+$ gh actions-lock
+$ gh actions-lock --no-fix --json=valid,findings
+```
+
+実処理を持つLinuxジョブは`cicd-sensor`で監視します。導入初期は
+`.cicd-sensor/config.yaml`の`monitor_mode: true`により、終了処理を検知へ緩和しています。
+Reusable Workflowだけで構成されるジョブは、呼び出し先Workflow側での導入が必要です。
+`gh-actions-lock v0.1.6`はReusable Workflow参照をlockfileへ収録しないため、
+それらは従来どおりコミットSHAで固定します。
+
 ## Roadmap
 
 未実装の機能のみ載せています。実装が完了した項目はここから削除し、
