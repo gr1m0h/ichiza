@@ -95,6 +95,7 @@ export class GitHubClient {
         Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${this.#token}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'ichiza-web',
         'X-GitHub-Api-Version': '2022-11-28',
         ...init?.headers,
       },
