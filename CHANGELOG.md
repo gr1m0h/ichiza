@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.4.0](https://github.com/gr1m0h/ichiza/compare/v0.3.0...v0.4.0) - 2026-10-08
+
+- feat(web): refine ichiza visual theme by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/25
+
 ## [v0.3.0](https://github.com/gr1m0h/ichiza/compare/v0.2.4...v0.3.0) - 2026-10-08
 
 - feat(web): improve event operations cockpit by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/23
