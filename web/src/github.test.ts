@@ -39,6 +39,19 @@ describe('GitHubClient', () => {
     )
   })
 
+  it('calls fetch without binding GitHubClient as its receiver', async () => {
+    let receiver: unknown = null
+    const fetchMock = vi.fn(async function (this: unknown) {
+      receiver = this
+      return Response.json([])
+    }) as typeof fetch
+    const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
+
+    await client.listDashboards()
+
+    expect(receiver).toBeUndefined()
+  })
+
   it('ignores pull requests returned by the issues endpoint', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -101,11 +114,42 @@ describe('GitHubClient', () => {
     await expect(client.listDashboards()).rejects.toThrow('GitHub API request failed (403)')
   })
 
+  it('trims surrounding whitespace from the configured token', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json([]))
+    const client = new GitHubClient({ repository: 'gr1m0h/community', token: '  secret\n', fetch: fetchMock })
+
+    await client.listDashboards()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer secret' }) }),
+    )
+  })
+
+  it('redacts the token when GitHub fetch fails before returning a response', async () => {
+    const token = 'github_pat_topsecret'
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(new TypeError(`Fetch failed while using ${token}\nretry later`))
+    const client = new GitHubClient({ repository: 'gr1m0h/community', token, fetch: fetchMock })
+
+    const request = client.listDashboards()
+
+    await expect(request).rejects.toMatchObject({
+      name: 'GitHubTransportError',
+      detail: 'TypeError: Fetch failed while using [REDACTED] retry later',
+    })
+    await expect(request).rejects.not.toThrow(token)
+  })
+
   it('rejects invalid runtime configuration', () => {
     expect(() => new GitHubClient({ repository: '../other', token: 'secret' })).toThrow(
       'ICHIZA_REPOSITORY must be owner/repository',
     )
     expect(() => new GitHubClient({ repository: 'gr1m0h/community', token: '' })).toThrow(
+      'ICHIZA_GITHUB_TOKEN is required',
+    )
+    expect(() => new GitHubClient({ repository: 'gr1m0h/community', token: ' \n ' })).toThrow(
       'ICHIZA_GITHUB_TOKEN is required',
     )
   })

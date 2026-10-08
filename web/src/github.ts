@@ -31,12 +31,26 @@ export class GitHubRequestError extends Error {
   }
 }
 
+export class GitHubTransportError extends Error {
+  readonly detail: string
+
+  constructor(cause: unknown, token: string) {
+    super('GitHub API transport failed')
+    this.name = 'GitHubTransportError'
+    const causeName = cause instanceof Error ? cause.name : 'UnknownError'
+    const causeMessage = cause instanceof Error ? cause.message : String(cause)
+    const redactedMessage = causeMessage.split(token).join('[REDACTED]').replace(/\s+/g, ' ').trim()
+    this.detail = `${causeName}: ${redactedMessage || 'unknown error'}`
+  }
+}
+
 export class GitHubClient {
   readonly #repository: string
   readonly #token: string
   readonly #fetch: typeof fetch
 
   constructor(options: GitHubClientOptions) {
+    const token = options.token.trim()
     const repositoryParts = options.repository.split('/')
     const validRepository =
       repositoryParts.length === 2 &&
@@ -46,9 +60,9 @@ export class GitHubClient {
     if (!validRepository) {
       throw new Error('ICHIZA_REPOSITORY must be owner/repository')
     }
-    if (options.token === '') throw new Error('ICHIZA_GITHUB_TOKEN is required')
+    if (token === '') throw new Error('ICHIZA_GITHUB_TOKEN is required')
     this.#repository = options.repository
-    this.#token = options.token
+    this.#token = token
     this.#fetch = options.fetch ?? fetch
   }
 
@@ -89,17 +103,23 @@ export class GitHubClient {
   }
 
   async #request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await this.#fetch(`https://api.github.com/repos/${this.#repository}${path}`, {
-      ...init,
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${this.#token}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'ichiza-web',
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...init?.headers,
-      },
-    })
+    let response: Response
+    try {
+      const fetchRequest = this.#fetch
+      response = await fetchRequest(`https://api.github.com/repos/${this.#repository}${path}`, {
+        ...init,
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${this.#token}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'ichiza-web',
+          'X-GitHub-Api-Version': '2022-11-28',
+          ...init?.headers,
+        },
+      })
+    } catch (error) {
+      throw new GitHubTransportError(error, this.#token)
+    }
     if (!response.ok) throw new GitHubRequestError(response.status)
     return (await response.json()) as T
   }
