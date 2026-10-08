@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.2.4](https://github.com/gr1m0h/ichiza/compare/v0.2.3...v0.2.4) - 2026-10-08
+
+- chore(deps): update actions/setup-node action to v7.1.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/20
+- feat: keep runtime task state in dashboard issues by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/21
+
 ## [v0.2.3](https://github.com/gr1m0h/ichiza/compare/v0.2.2...v0.2.3) - 2026-10-08
 
 - fix(web): call Cloudflare fetch without a receiver by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/18
