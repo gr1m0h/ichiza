@@ -90,18 +90,33 @@ describe('GitHubClient', () => {
       .mockResolvedValueOnce(Response.json({ ...issue, body: body.replace('- [ ]', '- [x]') }))
     const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
 
-    await client.updateTask(42, 'announce', true, issue.updated_at)
+    await client.updateTask(42, 'announce', { done: true }, issue.updated_at)
 
     const patch = fetchMock.mock.calls[1]
     expect(patch?.[1]?.method).toBe('PATCH')
     expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ body: expect.stringContaining('- [x]') })
   })
 
+  it('updates a task assignee using the latest issue body', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json(issue))
+      .mockResolvedValueOnce(Response.json({ ...issue, body: body.replace('<!-- ichiza-task:{"id":"announce","due":"2026-10-25","labels":["announce"]} -->', '<!-- ichiza-task:{"id":"announce","due":"2026-10-25","assignee":"alice","labels":["announce"]} -->').replace('参加者へ告知する <!--', '参加者へ告知する · @alice <!--') }))
+    const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
+
+    await client.updateTask(42, 'announce', { assignee: 'alice' }, issue.updated_at)
+
+    const patch = fetchMock.mock.calls[1]
+    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({
+      body: expect.stringContaining('参加者へ告知する · @alice'),
+    })
+  })
+
   it('rejects a stale update before patching GitHub', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json(issue))
     const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
 
-    await expect(client.updateTask(42, 'announce', true, '2026-10-07T00:00:00Z')).rejects.toBeInstanceOf(
+    await expect(client.updateTask(42, 'announce', { done: true }, '2026-10-07T00:00:00Z')).rejects.toBeInstanceOf(
       DashboardConflictError,
     )
     expect(fetchMock).toHaveBeenCalledTimes(1)

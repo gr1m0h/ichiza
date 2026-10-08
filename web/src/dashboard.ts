@@ -115,3 +115,23 @@ export function toggleDashboardTask(body: string, taskId: string, done: boolean)
   if (matches > 1) throw new Error(`duplicate task id "${taskId}"`)
   return lines.join('\n')
 }
+
+export function setDashboardTaskAssignee(body: string, taskId: string, assignee: string): string {
+  if (assignee !== '' && !/^[A-Za-z0-9-]+$/.test(assignee)) throw new Error('invalid assignee')
+  let matches = 0
+  const lines = body.split('\n').map((line) => {
+    const match = managedTaskLine.exec(line)
+    if (match === null || match[5] === undefined) return line
+    const metadata = parseMetadata(match[5])
+    if (metadata.id !== taskId) return line
+    matches += 1
+    const updatedMetadata = { ...metadata, assignee: assignee === '' ? undefined : assignee }
+    const metadataValue = JSON.stringify(updatedMetadata)
+    const visibleAssignee = updatedMetadata.assignee === undefined ? '' : ` · @${updatedMetadata.assignee}`
+    const carriageReturn = line.endsWith('\r') ? '\r' : ''
+    return `- [${match[1]}] **${match[2]}** ${match[3]}${visibleAssignee} <!-- ichiza-task:${metadataValue} -->${carriageReturn}`
+  })
+  if (matches === 0) throw new Error(`task "${taskId}" not found`)
+  if (matches > 1) throw new Error(`duplicate task id "${taskId}"`)
+  return lines.join('\n')
+}

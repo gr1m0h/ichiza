@@ -29,6 +29,10 @@ function setup(repository?: DashboardRepository) {
   const app = createApp({
     authenticate: vi.fn().mockResolvedValue({ email: 'alice@example.com', github: 'alice' }),
     repository: () => repo,
+    members: () => [
+      { email: 'alice@example.com', github: 'alice' },
+      { email: 'bob@example.com', github: 'bob' },
+    ],
     now: () => new Date('2026-10-07T00:00:00Z'),
   })
   return { app, repo }
@@ -109,6 +113,8 @@ describe('ichiza web', () => {
     expect(page).toContain('2026-11-01')
     expect(page).toContain('未完了に戻す')
     expect(page).toContain('今日')
+    expect(page).toContain('<select name="assignee">')
+    expect(page).toContain('<option value="alice" selected>alice</option>')
   })
 
   it('returns useful empty and not-found pages', async () => {
@@ -135,7 +141,47 @@ describe('ichiza web', () => {
     })
 
     expect(response.status).toBe(303)
-    expect(repo.updateTask).toHaveBeenCalledWith(42, 'venue', true, dashboard.updatedAt)
+    expect(repo.updateTask).toHaveBeenCalledWith(42, 'venue', { done: true }, dashboard.updatedAt)
+  })
+
+  it('assigns a task to a configured member', async () => {
+    const { app, repo } = setup()
+    const form = new URLSearchParams({ assignee: 'bob', issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt ?? '' })
+
+    const response = await app.request('http://localhost/events/hiroshima-3/tasks/venue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'http://localhost' },
+      body: form,
+    })
+
+    expect(response.status).toBe(303)
+    expect(repo.updateTask).toHaveBeenCalledWith(42, 'venue', { assignee: 'bob' }, dashboard.updatedAt)
+  })
+
+  it('allows unassigning a task', async () => {
+    const { app, repo } = setup()
+    const form = new URLSearchParams({ assignee: '', issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt ?? '' })
+
+    const response = await app.request('http://localhost/events/hiroshima-3/tasks/venue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'http://localhost' },
+      body: form,
+    })
+
+    expect(response.status).toBe(303)
+    expect(repo.updateTask).toHaveBeenCalledWith(42, 'venue', { assignee: '' }, dashboard.updatedAt)
+  })
+
+  it('rejects assigning a task to an unconfigured member', async () => {
+    const { app, repo } = setup()
+    const response = await app.request('http://localhost/events/hiroshima-3/tasks/venue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'http://localhost' },
+      body: new URLSearchParams({ assignee: 'mallory', issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt ?? '' }),
+    })
+
+    expect(response.status).toBe(400)
+    expect(repo.updateTask).not.toHaveBeenCalled()
   })
 
   it('returns a guided conflict page instead of overwriting GitHub changes', async () => {
@@ -181,7 +227,7 @@ describe('ichiza web', () => {
     const mismatch = await app.request('http://localhost/events/other/tasks/venue', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'http://localhost' },
-      body: new URLSearchParams({ issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt ?? '' }),
+      body: new URLSearchParams({ done: 'true', issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt ?? '' }),
     })
     expect(mismatch.status).toBe(404)
     expect(repo.updateTask).not.toHaveBeenCalled()

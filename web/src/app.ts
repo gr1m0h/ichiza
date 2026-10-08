@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 
-import { AccessError, authenticateAccess, type AccessEnv, type Operator } from './auth'
+import { AccessError, authenticateAccess, parseMembers, type AccessEnv, type Operator } from './auth'
 import type { EventDashboard } from './dashboard'
-import { DashboardConflictError, GitHubClient, GitHubRequestError, GitHubTransportError } from './github'
+import { DashboardConflictError, GitHubClient, GitHubRequestError, GitHubTransportError, type DashboardTaskChanges } from './github'
 
 interface Bindings extends AccessEnv {
   readonly ICHIZA_REPOSITORY: string
@@ -21,12 +21,13 @@ interface AppEnv {
 
 export interface DashboardRepository {
   listDashboards(): Promise<readonly EventDashboard[]>
-  updateTask(issueNumber: number, taskId: string, done: boolean, expectedUpdatedAt: string): Promise<EventDashboard>
+  updateTask(issueNumber: number, taskId: string, changes: DashboardTaskChanges, expectedUpdatedAt: string): Promise<EventDashboard>
 }
 
 interface AppDependencies {
   readonly authenticate: (request: Request, env: AccessEnv) => Promise<Operator>
   readonly repository: (env: Bindings) => DashboardRepository
+  readonly members: (env: Bindings) => readonly Operator[]
   readonly now: () => Date
 }
 
@@ -34,6 +35,7 @@ const defaultDependencies: AppDependencies = {
   authenticate: authenticateAccess,
   repository: (env) =>
     new GitHubClient({ repository: env.ICHIZA_REPOSITORY, token: env.ICHIZA_GITHUB_TOKEN }),
+  members: (env) => parseMembers(env.ICHIZA_MEMBERS),
   now: () => new Date(),
 }
 
@@ -79,9 +81,17 @@ function eventCard(dashboard: EventDashboard, date: string): string {
   return `<article class="card"><h2><a href="/events/${encodeURIComponent(dashboard.slug)}">${escapeHtml(dashboard.title)}</a></h2><p class="muted">開催日 ${escapeHtml(dashboard.date)}</p><p><span class="badge ${stateClass}">${escapeHtml(state)}</span>${completed} / ${dashboard.tasks.length} 完了</p></article>`
 }
 
-function taskRow(dashboard: EventDashboard, task: EventDashboard['tasks'][number], date: string): string {
+function taskRow(
+  dashboard: EventDashboard,
+  task: EventDashboard['tasks'][number],
+  date: string,
+  members: readonly Operator[],
+): string {
   const state = task.done ? '完了' : task.due < date ? '期限超過' : task.due === date ? '今日' : '予定'
-  return `<div class="task"><form method="post" action="/events/${encodeURIComponent(dashboard.slug)}/tasks/${encodeURIComponent(task.id)}"><input type="hidden" name="issueNumber" value="${dashboard.issueNumber}"><input type="hidden" name="expectedUpdatedAt" value="${escapeHtml(dashboard.updatedAt ?? '')}"><input type="hidden" name="done" value="${task.done ? 'false' : 'true'}"><button type="submit">${task.done ? '未完了に戻す' : '完了にする'}</button></form><div><strong>${escapeHtml(task.title)}</strong><br><span class="${state === '期限超過' ? 'danger' : 'muted'}">${state} · ${escapeHtml(task.due)}${task.assignee === undefined ? '' : ` · @${escapeHtml(task.assignee)}`}</span></div></div>`
+  const action = `/events/${encodeURIComponent(dashboard.slug)}/tasks/${encodeURIComponent(task.id)}`
+  const hidden = `<input type="hidden" name="issueNumber" value="${dashboard.issueNumber}"><input type="hidden" name="expectedUpdatedAt" value="${escapeHtml(dashboard.updatedAt ?? '')}">`
+  const options = [`<option value="">未設定</option>`, ...members.map((member) => `<option value="${escapeHtml(member.github)}"${member.github === task.assignee ? ' selected' : ''}>${escapeHtml(member.github)}</option>`)].join('')
+  return `<div class="task"><div><strong>${escapeHtml(task.title)}</strong><br><span class="${state === '期限超過' ? 'danger' : 'muted'}">${state} · ${escapeHtml(task.due)}${task.assignee === undefined ? '' : ` · @${escapeHtml(task.assignee)}`}</span></div><form method="post" action="${action}">${hidden}<input type="hidden" name="done" value="${task.done ? 'false' : 'true'}"><button type="submit">${task.done ? '未完了に戻す' : '完了にする'}</button></form><form method="post" action="${action}">${hidden}<label>担当 <select name="assignee">${options}</select></label><button type="submit">担当を保存</button></form></div>`
 }
 
 export function createApp(overrides: Partial<AppDependencies> = {}) {
@@ -126,7 +136,7 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
     const dashboards = await dependencies.repository(context.env).listDashboards()
     const dashboard = dashboards.find((candidate) => candidate.slug === context.req.param('slug'))
     if (dashboard === undefined) return context.text('event not found', 404)
-    const rows = dashboard.tasks.map((task) => taskRow(dashboard, task, today(dependencies, context.env))).join('')
+    const rows = dashboard.tasks.map((task) => taskRow(dashboard, task, today(dependencies, context.env), dependencies.members(context.env))).join('')
     const content = `<h1>${escapeHtml(dashboard.title)}</h1><p class="muted">開催日 ${escapeHtml(dashboard.date)}</p><p><a href="${escapeHtml(dashboard.issueUrl)}">GitHub Dashboard Issue</a></p><section class="card">${rows}</section>`
     return context.html(layout(dashboard.title, content))
   })
@@ -137,7 +147,7 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
     const cards = dashboards.flatMap((dashboard) => {
       const assigned = dashboard.tasks.filter((task) => task.assignee === operator.github && !task.done)
       if (assigned.length === 0) return []
-      const rows = assigned.map((task) => taskRow(dashboard, task, today(dependencies, context.env))).join('')
+      const rows = assigned.map((task) => taskRow(dashboard, task, today(dependencies, context.env), dependencies.members(context.env))).join('')
       return [`<section class="card"><h2>${escapeHtml(dashboard.title)}</h2>${rows}</section>`]
     })
     return context.html(layout('My Page', `<h1>My Page</h1><p>${escapeHtml(operator.github)} さんの担当</p>${cards.join('') || '<p>未完了の担当タスクはありません。</p>'}`))
@@ -148,8 +158,20 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
     const form = await context.req.parseBody()
     const issueNumber = Number(form.issueNumber)
     const expectedUpdatedAt = String(form.expectedUpdatedAt ?? '')
-    const done = form.done === 'true'
-    if (!Number.isInteger(issueNumber) || issueNumber <= 0 || expectedUpdatedAt === '') {
+    const hasDone = form.done !== undefined
+    const hasAssignee = form.assignee !== undefined
+    const assignee = hasAssignee ? String(form.assignee) : undefined
+    const changes: DashboardTaskChanges = {
+      ...(hasDone ? { done: form.done === 'true' } : {}),
+      ...(hasAssignee ? { assignee } : {}),
+    }
+    if (
+      !Number.isInteger(issueNumber) ||
+      issueNumber <= 0 ||
+      expectedUpdatedAt === '' ||
+      (!hasDone && !hasAssignee) ||
+      (assignee !== undefined && assignee !== '' && !dependencies.members(context.env).some((member) => member.github === assignee))
+    ) {
       return context.text('invalid task update', 400)
     }
     const repository = dependencies.repository(context.env)
@@ -159,7 +181,7 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
     )
     if (dashboard === undefined) return context.text('event not found', 404)
     try {
-      await repository.updateTask(issueNumber, context.req.param('taskId'), done, expectedUpdatedAt)
+      await repository.updateTask(issueNumber, context.req.param('taskId'), changes, expectedUpdatedAt)
       return context.redirect(`/events/${encodeURIComponent(dashboard.slug)}`, 303)
     } catch (error) {
       if (error instanceof DashboardConflictError) {
