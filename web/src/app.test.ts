@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { EventDashboard } from './dashboard'
-import { DashboardConflictError } from './github'
+import { DashboardConflictError, GitHubRequestError, GitHubTransportError } from './github'
 import { createApp, dateInTimeZone, type DashboardRepository } from './app'
 import { AccessError } from './auth'
 
@@ -198,5 +198,30 @@ describe('ichiza web', () => {
 
     expect(response.status).toBe(403)
     expect(await response.text()).toBe('operator is not allowed')
+  })
+
+  it.each([
+    {
+      error: new GitHubRequestError(403),
+      log: ['GitHub API request failed', { status: 403 }],
+    },
+    {
+      error: new GitHubTransportError(new TypeError('Fetch failed'), 'secret'),
+      log: ['GitHub API transport failed', { detail: 'TypeError: Fetch failed' }],
+    },
+  ])('returns a guided upstream error page for $error.name', async ({ error, log }) => {
+    const repo: DashboardRepository = {
+      listDashboards: vi.fn().mockRejectedValue(error),
+      updateTask: vi.fn(),
+    }
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const response = await setup(repo).app.request('http://localhost/')
+    const page = await response.text()
+
+    expect(response.status).toBe(502)
+    expect(page).toContain('GitHubからイベント情報を取得できませんでした')
+    expect(consoleError).toHaveBeenCalledWith(...log)
+    consoleError.mockRestore()
   })
 })

@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 
 import { AccessError, authenticateAccess, type AccessEnv, type Operator } from './auth'
 import type { EventDashboard } from './dashboard'
-import { DashboardConflictError, GitHubClient } from './github'
+import { DashboardConflictError, GitHubClient, GitHubRequestError, GitHubTransportError } from './github'
 
 interface Bindings extends AccessEnv {
   readonly ICHIZA_REPOSITORY: string
@@ -96,6 +96,24 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
       if (error instanceof AccessError) return context.text(error.message, error.status)
       throw error
     }
+  })
+
+  app.onError((error, context) => {
+    if (error instanceof GitHubRequestError) {
+      console.error('GitHub API request failed', { status: error.status })
+    } else if (error instanceof GitHubTransportError) {
+      console.error('GitHub API transport failed', { detail: error.detail })
+    } else {
+      console.error(error)
+      return context.text('Internal Server Error', 500)
+    }
+    return context.html(
+      layout(
+        'GitHub接続エラー',
+        '<h1>GitHub接続エラー</h1><p>GitHubからイベント情報を取得できませんでした。しばらく待って再読み込みしてください。</p>',
+      ),
+      502,
+    )
   })
 
   app.get('/', async (context) => {
