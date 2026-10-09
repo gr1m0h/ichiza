@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.5.1](https://github.com/gr1m0h/ichiza/compare/v0.5.0...v0.5.1) - 2026-10-09
+
+- Update dependency wrangler to v4.149.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/29
+
 ## [v0.5.0](https://github.com/gr1m0h/ichiza/compare/v0.4.0...v0.5.0) - 2026-10-08
 
 - feat(web): add save action feedback by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/27
