@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.5.1](https://github.com/gr1m0h/ichiza/compare/v0.5.0...v0.5.1) - 2026-10-22
+
+- Update dependency wrangler to v4.149.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/29
+- fix(security): require Go 1.26.10 for patched X.509 verification by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/35
+- Update cicd-sensor/cicd-sensor-action action to v0.0.40 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/32
+- Update Songmu/tagpr action to v1.21.3 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/34
+- Update vitest monorepo to v5.0.5 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/31
+- Update dependency wrangler to v4.152.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/33
+
 ## [v0.5.0](https://github.com/gr1m0h/ichiza/compare/v0.4.0...v0.5.0) - 2026-10-08
 
 - feat(web): add save action feedback by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/27
