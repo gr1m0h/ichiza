@@ -23,11 +23,11 @@ jobs:
       issues: read
       pull-requests: write
     steps:
-      - uses: cicd-sensor/cicd-sensor-action@v0.0.39
+      - uses: cicd-sensor/cicd-sensor-action@v0.0.40
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: Songmu/tagpr@v1.21.2
+      - uses: Songmu/tagpr@v1.21.3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
