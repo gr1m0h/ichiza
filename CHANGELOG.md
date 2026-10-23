@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.5.2](https://github.com/gr1m0h/ichiza/compare/v0.5.1...v0.5.2) - 2026-10-23
+
+- Update Songmu/tagpr action to v1.21.4 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/37
+
 ## [v0.5.1](https://github.com/gr1m0h/ichiza/compare/v0.5.0...v0.5.1) - 2026-10-22
 
 - Update dependency wrangler to v4.149.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/29
