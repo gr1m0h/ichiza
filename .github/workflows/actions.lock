@@ -7,11 +7,11 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-go@v7.0.0'
         - 'actions/setup-node@v7.1.0'
-        - 'cicd-sensor/cicd-sensor-action@v0.0.40'
+        - 'cicd-sensor/cicd-sensor-action@v0.0.41'
     '.github/workflows/security.yml': []
     '.github/workflows/tagpr.yml':
         - 'actions/checkout@v7.0.1'
-        - 'cicd-sensor/cicd-sensor-action@v0.0.40'
+        - 'cicd-sensor/cicd-sensor-action@v0.0.41'
         - 'songmu/tagpr@v1.21.4'
 dependencies:
     'actions/checkout@v7.0.1':
@@ -29,9 +29,9 @@ dependencies:
         commit: 'sha1-949feb2413d6458794dcd2491c4babbbce0c15c1'
         owner_id: 44036562
         repo_id: 189476904
-    'cicd-sensor/cicd-sensor-action@v0.0.40':
-        ref: 'v0.0.40'
-        commit: 'sha1-49560b716a9abba9190a48c0b6bca18ba98918e8'
+    'cicd-sensor/cicd-sensor-action@v0.0.41':
+        ref: 'v0.0.41'
+        commit: 'sha1-2bc31a18949a77cd5f5bd452f24f00fbb507cdf6'
         owner_id: 282334600
         repo_id: 1231431279
     'songmu/tagpr@v1.21.4':
