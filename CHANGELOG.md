@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.5.2](https://github.com/gr1m0h/ichiza/compare/v0.5.1...v0.5.2) - 2026-11-07
+
+- Update Songmu/tagpr action to v1.21.4 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/37
+- Update dependency wrangler to v4.153.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/41
+- Update cicd-sensor/cicd-sensor-action action to v0.0.41 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/40
+- Update dependency hono to v4.13.14 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/39
+- Update dependency wrangler to v4.154.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/42
+- Update dependency wrangler to v4.155.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/44
+- Update dependency node to v24.22.2 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/45
+- Update dependency wrangler to v4.156.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/46
+- Update dependency hono to v4.13.16 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/47
+- Update dependency wrangler to v4.156.1 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/48
+- Update dependency wrangler to v4.156.2 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/49
+- Update vitest monorepo to ~5.1.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/50
+- Update Songmu/tagpr action to v1.22.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/51
+- Update dependency wrangler to v4.157.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/52
+- Update dependency wrangler to v4.158.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/53
+- Update dependency hono to v4.13.17 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/54
+
 ## [v0.5.1](https://github.com/gr1m0h/ichiza/compare/v0.5.0...v0.5.1) - 2026-10-22
 
 - Update dependency wrangler to v4.149.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/29
