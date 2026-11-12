@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.5.3](https://github.com/gr1m0h/ichiza/compare/v0.5.2...v0.5.3) - 2026-11-12
+
+- fix: Worker のデプロイ設定を Wrangler の差分検査に反映する by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/61
+
 ## [v0.5.2](https://github.com/gr1m0h/ichiza/compare/v0.5.1...v0.5.2) - 2026-11-12
 
 - Update Songmu/tagpr action to v1.21.4 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/37
