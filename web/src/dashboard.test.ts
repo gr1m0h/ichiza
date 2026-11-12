@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseDashboard, setDashboardTaskAssignee, toggleDashboardTask } from './dashboard'
+import { parseDashboard, updateDashboardTasks } from './dashboard'
 
 const dashboardBody = `<!-- ichiza-dashboard:v1 slug=hiroshima-3 date=2026-11-01 -->
 
@@ -29,7 +29,7 @@ describe('parseDashboard', () => {
         id: 'venue',
         title: '会場を確定する',
         due: '2026-10-20',
-        assignee: 'alice',
+        assignees: ['alice'],
         labels: ['venue'],
         done: true,
       },
@@ -37,7 +37,7 @@ describe('parseDashboard', () => {
         id: 'announce',
         title: '参加者へ告知する',
         due: '2026-10-25',
-        assignee: undefined,
+        assignees: [],
         labels: ['announce'],
         done: false,
       },
@@ -102,9 +102,9 @@ describe('parseDashboard', () => {
   })
 })
 
-describe('toggleDashboardTask', () => {
+describe('completion updates', () => {
   it('updates one managed checkbox and preserves all other text', () => {
-    const updated = toggleDashboardTask(dashboardBody, 'announce', true)
+    const updated = updateDashboardTasks(dashboardBody, [{ taskId: 'announce', done: true }])
 
     expect(updated).toContain(
       '- [x] **2026-10-25** 参加者へ告知する <!-- ichiza-task:{"id":"announce"',
@@ -114,19 +114,19 @@ describe('toggleDashboardTask', () => {
   })
 
   it('rejects an unknown task id', () => {
-    expect(() => toggleDashboardTask(dashboardBody, 'missing', true)).toThrow('task "missing" not found')
+    expect(() => updateDashboardTasks(dashboardBody, [{ taskId: 'missing', done: true }])).toThrow('task "missing" not found')
   })
 
   it('rejects duplicate target ids', () => {
     const duplicate = dashboardBody.replace('"id":"announce"', '"id":"venue"')
 
-    expect(() => toggleDashboardTask(duplicate, 'venue', true)).toThrow('duplicate task id "venue"')
+    expect(() => updateDashboardTasks(duplicate, [{ taskId: 'venue', done: true }])).toThrow('duplicate task id "venue"')
   })
 })
 
-describe('setDashboardTaskAssignee', () => {
+describe('assignment updates', () => {
   it('assigns one managed task and keeps metadata in sync', () => {
-    const updated = setDashboardTaskAssignee(dashboardBody, 'announce', 'bob')
+    const updated = updateDashboardTasks(dashboardBody, [{ taskId: 'announce', assignees: ['bob'] }])
 
     expect(updated).toContain('- [ ] **2026-10-25** 参加者へ告知する · @bob')
     expect(updated).toContain('"assignee":"bob"')
@@ -135,7 +135,7 @@ describe('setDashboardTaskAssignee', () => {
   })
 
   it('unassigns one managed task', () => {
-    const updated = setDashboardTaskAssignee(dashboardBody, 'venue', '')
+    const updated = updateDashboardTasks(dashboardBody, [{ taskId: 'venue', assignees: [] }])
 
     expect(updated).toContain('- [x] **2026-10-20** 会場を確定する <!-- ichiza-task:')
     expect(updated).toContain('"id":"venue"')
@@ -143,13 +143,13 @@ describe('setDashboardTaskAssignee', () => {
   })
 
   it('rejects an invalid GitHub login', () => {
-    expect(() => setDashboardTaskAssignee(dashboardBody, 'announce', 'not valid')).toThrow(
+    expect(() => updateDashboardTasks(dashboardBody, [{ taskId: 'announce', assignees: ['not valid'] }])).toThrow(
       'invalid assignee',
     )
   })
 
   it('rejects an unknown task id', () => {
-    expect(() => setDashboardTaskAssignee(dashboardBody, 'missing', 'alice')).toThrow(
+    expect(() => updateDashboardTasks(dashboardBody, [{ taskId: 'missing', assignees: ['alice'] }])).toThrow(
       'task "missing" not found',
     )
   })
@@ -157,7 +157,7 @@ describe('setDashboardTaskAssignee', () => {
   it('rejects duplicate target ids', () => {
     const duplicate = dashboardBody.replace('"id":"announce"', '"id":"venue"')
 
-    expect(() => setDashboardTaskAssignee(duplicate, 'venue', 'alice')).toThrow(
+    expect(() => updateDashboardTasks(duplicate, [{ taskId: 'venue', assignees: ['alice'] }])).toThrow(
       'duplicate task id "venue"',
     )
   })
