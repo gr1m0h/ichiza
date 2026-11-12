@@ -1,13 +1,15 @@
 const dashboardMarker = /^<!-- ichiza-dashboard:v1 slug=([a-z0-9][a-z0-9-]*) date=(\d{4}-\d{2}-\d{2}) -->$/
 const managedTaskLine =
-  /^- \[([ xX])\] \*\*(\d{4}-\d{2}-\d{2})\*\* (.+?)(?: · @([A-Za-z0-9-]+))? <!-- ichiza-task:(\{.*\}) -->\r?$/
+  /^- \[([ xX])\] \*\*(\d{4}-\d{2}-\d{2})\*\* (.+?)(?: · @([A-Za-z0-9-]+(?: @[A-Za-z0-9-]+)*))? <!-- ichiza-task:(\{.*\}) -->\r?$/
 const tasksStart = '<!-- ichiza-tasks:start -->'
 const tasksEnd = '<!-- ichiza-tasks:end -->'
 
 interface TaskMetadata {
   readonly id: string
   readonly due: string
-  readonly assignee?: string
+  readonly assignees: readonly string[]
+  readonly mention_assignees?: boolean
+  readonly reminder?: string
   readonly assignee_source?: string
   readonly labels: readonly string[]
 }
@@ -28,6 +30,13 @@ export interface EventDashboard {
   readonly body: string
 }
 
+export function validReminder(value: unknown): value is string {
+  if (value === '' || value === 'off') return true
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const day = new Date(value + 'T00:00:00Z')
+  return Number.isFinite(day.valueOf()) && day.toISOString().slice(0, 10) === value
+}
+
 function parseMetadata(value: string): TaskMetadata {
   const parsed: unknown = JSON.parse(value)
   if (typeof parsed !== 'object' || parsed === null) {
@@ -39,17 +48,25 @@ function parseMetadata(value: string): TaskMetadata {
     typeof metadata.id !== 'string' ||
     typeof metadata.due !== 'string' ||
     (metadata.assignee !== undefined && typeof metadata.assignee !== 'string') ||
+    (metadata.assignee !== undefined && metadata.assignees !== undefined) ||
+    (metadata.mention_assignees !== undefined && typeof metadata.mention_assignees !== 'boolean') ||
+    (metadata.reminder !== undefined && !validReminder(metadata.reminder)) ||
     !Array.isArray(labels) ||
     !labels.every((label) => typeof label === 'string')
   ) {
     throw new Error('invalid task metadata')
   }
+  const { assignee, ...fields } = metadata
+  const assignees = metadata.assignees ?? (assignee ? [assignee] : [])
+  if (!Array.isArray(assignees) || !assignees.every(name => typeof name === 'string' && /^[A-Za-z0-9-]+$/.test(name)) ||
+      new Set(assignees).size !== assignees.length) throw new Error('invalid assignees')
   return {
+    ...fields,
+    assignees,
     id: metadata.id,
     due: metadata.due,
-    assignee: metadata.assignee,
     labels,
-  } as TaskMetadata
+  }
 }
 
 function parseTask(line: string): DashboardTask | undefined {
@@ -61,7 +78,7 @@ function parseTask(line: string): DashboardTask | undefined {
   if (metadata.assignee_source !== undefined && metadata.assignee_source !== 'runtime') {
     throw new Error(`task "${metadata.id}" has unsupported assignee source`)
   }
-  if (visibleDue !== metadata.due || visibleAssignee !== metadata.assignee) {
+  if (visibleDue !== metadata.due || (visibleAssignee ?? '') !== metadata.assignees.join(' @')) {
     throw new Error(`task "${metadata.id}" visible metadata does not match marker`)
   }
   return { ...metadata, title: title ?? '', done: mark?.toLowerCase() === 'x' }
@@ -105,41 +122,53 @@ export function parseDashboard(
   }
 }
 
-export function toggleDashboardTask(body: string, taskId: string, done: boolean): string {
-  let matches = 0
-  const lines = body.split('\n').map((line) => {
-    const match = managedTaskLine.exec(line)
-    if (match === null || match[5] === undefined) return line
-    const metadata = parseMetadata(match[5])
-    if (metadata.id !== taskId) return line
-    matches += 1
-    return `${line.slice(0, 3)}${done ? 'x' : ' '}${line.slice(4)}`
-  })
-  if (matches === 0) throw new Error(`task "${taskId}" not found`)
-  if (matches > 1) throw new Error(`duplicate task id "${taskId}"`)
-  return lines.join('\n')
+export interface DashboardTaskUpdate {
+  taskId: string
+  done?: boolean
+  assignees?: readonly string[]
+  reminder?: string
+  mentionAssignees?: boolean
 }
 
-export function setDashboardTaskAssignee(body: string, taskId: string, assignee: string): string {
-  if (assignee !== '' && !/^[A-Za-z0-9-]+$/.test(assignee)) throw new Error('invalid assignee')
-  let matches = 0
-  const lines = body.split('\n').map((line) => {
+export function updateDashboardTasks(body: string, updates: readonly DashboardTaskUpdate[]): string {
+  const pending = new Map(updates.map(update => [update.taskId, update]))
+  const lines = body.split('\n')
+  const start = lines.findIndex(line => line.trimEnd() === tasksStart)
+  const end = lines.findIndex(line => line.trimEnd() === tasksEnd)
+  if (start < 0 || end <= start) throw new Error('missing dashboard task markers')
+  const found = new Set<string>()
+  for (let i = start + 1; i < end; i++) {
+    const line = lines[i]!
     const match = managedTaskLine.exec(line)
-    if (match === null || match[5] === undefined) return line
+    if (!match?.[5]) continue
     const metadata = parseMetadata(match[5])
-    if (metadata.id !== taskId) return line
-    matches += 1
+    const update = pending.get(metadata.id)
+    if (!update) continue
+    if (found.has(metadata.id)) throw new Error(`duplicate task id "${metadata.id}"`)
+    found.add(metadata.id)
+    const mark = update.done === undefined ? match[1] : update.done ? 'x' : ' '
+    if (update.assignees === undefined && update.reminder === undefined && update.mentionAssignees === undefined) {
+      lines[i] = line.slice(0, 3) + mark + line.slice(4)
+      continue
+    }
+    const assignees = update.assignees ?? metadata.assignees
+    if (!assignees.every(name => /^[A-Za-z0-9-]+$/.test(name)) || new Set(assignees).size !== assignees.length) throw new Error('invalid assignee')
+    const reminder = update.reminder ?? metadata.reminder ?? ''
+    if (!validReminder(reminder)) throw new Error('invalid reminder')
     const updatedMetadata = {
       ...metadata,
-      assignee: assignee === '' ? undefined : assignee,
-      assignee_source: 'runtime',
+      assignee: assignees.length === 1 ? assignees[0] : undefined,
+      assignees: assignees.length > 1 ? assignees : undefined,
+      assignee_source: update.assignees !== undefined ? 'runtime' : metadata.assignee_source,
+      reminder: reminder || undefined,
+      mention_assignees: (update.mentionAssignees ?? metadata.mention_assignees) || undefined,
     }
-    const metadataValue = JSON.stringify(updatedMetadata)
-    const visibleAssignee = updatedMetadata.assignee === undefined ? '' : ` · @${updatedMetadata.assignee}`
-    const carriageReturn = line.endsWith('\r') ? '\r' : ''
-    return `- [${match[1]}] **${match[2]}** ${match[3]}${visibleAssignee} <!-- ichiza-task:${metadataValue} -->${carriageReturn}`
-  })
-  if (matches === 0) throw new Error(`task "${taskId}" not found`)
-  if (matches > 1) throw new Error(`duplicate task id "${taskId}"`)
+    const visible = assignees.length ? ` · @${assignees.join(' @')}` : ''
+    const cr = line.endsWith('\r') ? '\r' : ''
+    lines[i] = `- [${mark}] **${match[2]}** ${match[3]}${visible} <!-- ichiza-task:${JSON.stringify(updatedMetadata)} -->${cr}`
+  }
+  for (const id of pending.keys()) {
+    if (!found.has(id)) throw new Error(`task "${id}" not found`)
+  }
   return lines.join('\n')
 }

@@ -24,8 +24,11 @@ type Options struct {
 }
 
 type Item struct {
-	Task     task.Task
-	DaysLeft int // negative = overdue
+	Task             task.Task
+	Assignees        []string
+	CheckToday       bool
+	MentionAssignees bool
+	DaysLeft         int // negative = overdue
 }
 
 type EventDigest struct {
@@ -71,14 +74,22 @@ func Collect(opt Options) ([]EventDigest, error) {
 			if exists && state.Done {
 				continue
 			}
-			if exists {
-				t.Assignee = state.Assignee
-			}
 			days := int(t.Due.Sub(now).Hours() / 24)
-			if days > opt.WindowDays {
+			switch state.Reminder {
+			case "":
+				if days > opt.WindowDays {
+					continue
+				}
+			case now.Format(time.DateOnly):
+				// The requested check date is independent of the original deadline.
+			default:
 				continue
 			}
-			items = append(items, Item{Task: t, DaysLeft: days})
+			owners := state.Assignees
+			if !exists && t.Assignee != "" {
+				owners = []string{t.Assignee}
+			}
+			items = append(items, Item{Task: t, DaysLeft: days, Assignees: owners, CheckToday: state.Reminder != "", MentionAssignees: state.MentionAssignees})
 		}
 		if len(items) == 0 {
 			continue
@@ -95,17 +106,23 @@ func Collect(opt Options) ([]EventDigest, error) {
 // as a one-tap SNS post without requiring an X API integration.
 func Message(now time.Time, digests []EventDigest, slackUsersByGitHub map[string]string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "⏰ ichiza remind — %s 時点で期限が近いタスク\n", now.Format("2006-01-02"))
+	fmt.Fprintf(&b, "⏰ ichiza remind — %s のタスクリマインド\n", now.Format("2006-01-02"))
 	for _, d := range digests {
 		fmt.Fprintf(&b, "\n*%s*（%s / %s 開催）\n", d.Event.Event.Title, d.Event.Event.Slug, d.Event.Event.Date)
 		for _, it := range d.Items {
-			assignee := ""
-			if slackUserID := slackUsersByGitHub[it.Task.Assignee]; slackUserID != "" {
-				assignee = " · <@" + slackUserID + ">"
-			} else if it.Task.Assignee != "" {
-				assignee = " · 担当: " + it.Task.Assignee
+			label := deadline(it.DaysLeft)
+			if it.CheckToday {
+				label = "本日確認"
 			}
-			fmt.Fprintf(&b, "• %s: %s（%s）%s\n", deadline(it.DaysLeft), it.Task.Title, it.Task.Due.Format("2006-01-02"), assignee)
+			fmt.Fprintf(&b, "• %s: %s（%s）", label, it.Task.Title, it.Task.Due.Format(time.DateOnly))
+			for _, owner := range it.Assignees {
+				if slackID := slackUsersByGitHub[owner]; it.MentionAssignees && slackID != "" {
+					fmt.Fprintf(&b, " · <@%s>", slackID)
+				} else {
+					fmt.Fprintf(&b, " · 担当: %s", owner)
+				}
+			}
+			b.WriteByte('\n')
 			if slices.Contains(it.Task.Labels, "announce") {
 				fmt.Fprintf(&b, "　└ X で告知: %s\n", XIntentURL(d.Event))
 			}

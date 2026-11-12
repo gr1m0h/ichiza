@@ -1,9 +1,4 @@
-import { type EventDashboard, parseDashboard, setDashboardTaskAssignee, toggleDashboardTask } from './dashboard'
-
-export interface DashboardTaskChanges {
-  readonly done?: boolean
-  readonly assignee?: string
-}
+import { type EventDashboard, type DashboardTaskUpdate, parseDashboard, updateDashboardTasks } from './dashboard'
 
 interface GitHubIssue {
   readonly number: number
@@ -87,17 +82,14 @@ export class GitHubClient {
       .map((issue) => this.#parseIssue(issue))
   }
 
-  async updateTask(
+  async updateTasks(
     issueNumber: number,
-    taskId: string,
-    changes: DashboardTaskChanges,
+    updates: readonly DashboardTaskUpdate[],
     expectedUpdatedAt: string,
   ): Promise<EventDashboard> {
     const issue = await this.#request<GitHubIssue>(`/issues/${issueNumber}`)
     if (issue.updated_at !== expectedUpdatedAt) throw new DashboardConflictError()
-    let updatedBody = issue.body ?? ''
-    if (changes.done !== undefined) updatedBody = toggleDashboardTask(updatedBody, taskId, changes.done)
-    if (changes.assignee !== undefined) updatedBody = setDashboardTaskAssignee(updatedBody, taskId, changes.assignee)
+    const updatedBody = updateDashboardTasks(issue.body ?? '', updates)
     const updated = await this.#request<GitHubIssue>(`/issues/${issueNumber}`, {
       method: 'PATCH',
       body: JSON.stringify({ body: updatedBody }),

@@ -2,6 +2,7 @@ package remind
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func TestParseDashboardTasksReadsRuntimeAssignee(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := states[taskKey("hiroshima-1", "venue")].Assignee; got != "bob" {
+	if got := states[taskKey("hiroshima-1", "venue")].Assignees; !slices.Equal(got, []string{"bob"}) {
 		t.Fatalf("assignee = %q, want bob", got)
 	}
 }

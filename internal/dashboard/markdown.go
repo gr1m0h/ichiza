@@ -17,15 +17,18 @@ const (
 
 var (
 	dashboardMarker = regexp.MustCompile(`^<!-- ichiza-dashboard:v1 slug=([a-z0-9][a-z0-9-]*) date=(\d{4}-\d{2}-\d{2}) -->$`)
-	managedTaskLine = regexp.MustCompile(`^- \[([ xX])\] \*\*(\d{4}-\d{2}-\d{2})\*\* (.+?)(?: · @([A-Za-z0-9-]+))? <!-- ichiza-task:(\{.*\}) -->\r?$`)
+	managedTaskLine = regexp.MustCompile(`^- \[([ xX])\] \*\*(\d{4}-\d{2}-\d{2})\*\* (.+?)(?: · @([A-Za-z0-9-]+(?: @[A-Za-z0-9-]+)*))? <!-- ichiza-task:(\{.*\}) -->\r?$`)
 )
 
 type metadata struct {
-	ID             string   `json:"id"`
-	Due            string   `json:"due"`
-	Assignee       string   `json:"assignee,omitempty"`
-	AssigneeSource string   `json:"assignee_source,omitempty"`
-	Labels         []string `json:"labels,omitempty"`
+	ID               string   `json:"id"`
+	Due              string   `json:"due"`
+	Assignee         string   `json:"assignee,omitempty"`
+	Assignees        []string `json:"assignees,omitempty"`
+	MentionAssignees bool     `json:"mention_assignees,omitempty"`
+	Reminder         string   `json:"reminder,omitempty"`
+	AssigneeSource   string   `json:"assignee_source,omitempty"`
+	Labels           []string `json:"labels,omitempty"`
 }
 
 func Render(doc Document) (string, error) {
@@ -49,7 +52,7 @@ func Render(doc Document) (string, error) {
 		seen[item.ID] = true
 		meta, err := json.Marshal(metadata{
 			ID: item.ID, Due: item.Due.Format("2006-01-02"),
-			Assignee: item.Assignee, AssigneeSource: item.AssigneeSource, Labels: item.Labels,
+			Assignee: item.Assignee, Assignees: item.Assignees, Reminder: item.Reminder, MentionAssignees: item.MentionAssignees, AssigneeSource: item.AssigneeSource, Labels: item.Labels,
 		})
 		if err != nil {
 			return "", fmt.Errorf("task %q metadata: %w", item.ID, err)
@@ -59,8 +62,8 @@ func Render(doc Document) (string, error) {
 			mark = "x"
 		}
 		assignee := ""
-		if item.Assignee != "" {
-			assignee = " · @" + item.Assignee
+		if owners := item.CurrentAssignees(); len(owners) > 0 {
+			assignee = " · @" + strings.Join(owners, " @")
 		}
 		fmt.Fprintf(&out, "- [%s] **%s** %s%s <!-- ichiza-task:%s -->\n",
 			mark, item.Due.Format("2006-01-02"), item.Title, assignee, meta)
@@ -138,7 +141,26 @@ func Parse(body string) (Document, error) {
 		if err != nil {
 			return Document{}, fmt.Errorf("task %q due: %w", meta.ID, err)
 		}
-		if match[2] != meta.Due || match[4] != meta.Assignee {
+		if meta.Reminder != "" && meta.Reminder != "off" {
+			if _, err := time.Parse(time.DateOnly, meta.Reminder); err != nil {
+				return Document{}, fmt.Errorf("task %q invalid reminder date: %w", meta.ID, err)
+			}
+		}
+		visible := meta.Assignee
+		if meta.Assignees != nil {
+			if meta.Assignee != "" {
+				return Document{}, fmt.Errorf("task %q has conflicting assignees", meta.ID)
+			}
+			seenOwners := make(map[string]bool)
+			for _, owner := range meta.Assignees {
+				if owner == "" || seenOwners[owner] || strings.Contains(owner, " ") {
+					return Document{}, fmt.Errorf("task %q invalid assignee %q", meta.ID, owner)
+				}
+				seenOwners[owner] = true
+			}
+			visible = strings.Join(meta.Assignees, " @")
+		}
+		if match[2] != meta.Due || match[4] != visible {
 			return Document{}, fmt.Errorf("task %q visible metadata does not match marker", meta.ID)
 		}
 		if meta.AssigneeSource != "" && meta.AssigneeSource != "runtime" {
@@ -146,7 +168,7 @@ func Parse(body string) (Document, error) {
 		}
 		doc.Tasks = append(doc.Tasks, Item{Task: task.Task{
 			ID: meta.ID, Title: match[3], Due: due, Assignee: meta.Assignee, Labels: meta.Labels,
-		}, Done: strings.EqualFold(match[1], "x"), AssigneeSource: meta.AssigneeSource})
+		}, Assignees: meta.Assignees, Reminder: meta.Reminder, MentionAssignees: meta.MentionAssignees, Done: strings.EqualFold(match[1], "x"), AssigneeSource: meta.AssigneeSource})
 	}
 	return Document{}, fmt.Errorf("missing tasks end marker")
 }
@@ -171,8 +193,11 @@ func Merge(current string, desired Document) (string, error) {
 	for i := range merged.Tasks {
 		if existing, ok := existingByID[merged.Tasks[i].ID]; ok {
 			merged.Tasks[i].Done = existing.Done
+			merged.Tasks[i].Reminder = existing.Reminder
+			merged.Tasks[i].MentionAssignees = existing.MentionAssignees
 			if existing.AssigneeSource == "runtime" {
 				merged.Tasks[i].Assignee = existing.Assignee
+				merged.Tasks[i].Assignees = existing.Assignees
 				merged.Tasks[i].AssigneeSource = existing.AssigneeSource
 			}
 		}
