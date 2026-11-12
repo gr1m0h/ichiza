@@ -19,6 +19,9 @@ inputs:
   access-aud:
     description: Cloudflare Access application audience
     default: ""
+  allow-config-updates:
+    description: Allow intentional changes to existing Worker settings after reviewing the configuration
+    default: "false"
 runs:
   using: composite
   steps:
@@ -39,23 +42,43 @@ runs:
         if [ -z "$repository" ]; then
           repository="$GITHUB_REPOSITORY"
         fi
-        node -e 'JSON.parse(process.argv[1])' "$INPUT_MEMBERS"
-        node -e 'new Intl.DateTimeFormat("en-US", {timeZone: process.argv[1]}).format()' "$INPUT_TIMEZONE"
+        case "$INPUT_ALLOW_CONFIG_UPDATES" in
+          true|false) ;;
+          *) echo "::error::allow-config-updates must be true or false"; exit 1 ;;
+        esac
 
+        umask 077
+        config_file=""
+        secrets_file=""
+        trap 'rm -f "$config_file" "$secrets_file"' EXIT
+        # Keep the config beside wrangler.jsonc so relative entry points still resolve.
+        config_file=$(mktemp ./wrangler.deploy.XXXXXX.json)
         secrets_file=$(mktemp)
-        trap 'rm -f "$secrets_file"' EXIT
-        SECRETS_FILE="$secrets_file" node -e \
-          'require("node:fs").writeFileSync(process.env.SECRETS_FILE, JSON.stringify({ICHIZA_GITHUB_TOKEN: process.env.ICHIZA_GITHUB_TOKEN}))'
+        DEPLOY_CONFIG="$config_file" SECRETS_FILE="$secrets_file" DEPLOY_REPOSITORY="$repository" node --input-type=module <<'NODE'
+        import { readFileSync, writeFileSync } from 'node:fs'
+        const env = process.env
+        const config = JSON.parse(readFileSync('wrangler.jsonc', 'utf8'))
+        const members = JSON.parse(env.INPUT_MEMBERS)
+        if (!Array.isArray(members)) throw new Error('members must be an array')
+        new Intl.DateTimeFormat('en-US', {timeZone: env.INPUT_TIMEZONE}).format()
+        config.name = env.INPUT_WORKER_NAME
+        config.vars = {
+          ...config.vars,
+          ICHIZA_REPOSITORY: env.DEPLOY_REPOSITORY,
+          ICHIZA_MEMBERS: JSON.stringify(members),
+          ICHIZA_TIMEZONE: env.INPUT_TIMEZONE,
+          CF_ACCESS_TEAM_DOMAIN: env.INPUT_ACCESS_TEAM_DOMAIN,
+          CF_ACCESS_AUD: env.INPUT_ACCESS_AUD,
+        }
+        writeFileSync(env.DEPLOY_CONFIG, JSON.stringify(config))
+        writeFileSync(env.SECRETS_FILE, JSON.stringify({ICHIZA_GITHUB_TOKEN: env.ICHIZA_GITHUB_TOKEN}))
+        NODE
 
-        npx --no-install wrangler deploy \
-          --name "$INPUT_WORKER_NAME" \
-          --var "ICHIZA_REPOSITORY:$repository" \
-          --var "ICHIZA_MEMBERS:$INPUT_MEMBERS" \
-          --var "ICHIZA_TIMEZONE:$INPUT_TIMEZONE" \
-          --var "CF_ACCESS_TEAM_DOMAIN:$INPUT_ACCESS_TEAM_DOMAIN" \
-          --var "CF_ACCESS_AUD:$INPUT_ACCESS_AUD" \
-          --secrets-file "$secrets_file" \
-          --strict
+        deploy_args=(--config "$config_file" --secrets-file "$secrets_file")
+        if [ "$INPUT_ALLOW_CONFIG_UPDATES" = "false" ]; then
+          deploy_args+=(--strict)
+        fi
+        npx --no-install wrangler deploy "${deploy_args[@]}"
       shell: bash
       working-directory: ${{ github.action_path }}/../../web
       env:
@@ -65,4 +88,5 @@ runs:
         INPUT_TIMEZONE: ${{ inputs.timezone }}
         INPUT_ACCESS_TEAM_DOMAIN: ${{ inputs.access-team-domain }}
         INPUT_ACCESS_AUD: ${{ inputs.access-aud }}
+        INPUT_ALLOW_CONFIG_UPDATES: ${{ inputs.allow-config-updates }}
         WRANGLER_SEND_METRICS: "false"

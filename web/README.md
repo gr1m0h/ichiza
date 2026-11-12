@@ -61,3 +61,11 @@ AccessとWorker内の`ICHIZA_MEMBERS`の両方を通った運営者だけがデ�
 - `CLOUDFLARE_API_TOKEN`: 対象Workerを編集できるCloudflare API token
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID
 - `ICHIZA_GITHUB_TOKEN`: 運営リポジトリのIssues read/writeを持つfine-grained PAT
+
+Worker 名と非公開でない bindings は、一時的な設定ファイルにまとめて Wrangler に渡します。
+一時ファイルはデプロイの成功・失敗のどちらでも削除し、GitHub token は別の secrets file にだけ格納します。
+
+Cloudflare Dashboard で変更した設定との差分は、既定では `--strict` によりデプロイを停止します。
+運営者の追加など、workflow の入力で既存設定を意図的に更新するときは、差分を確認してから
+`actions/web-deploy` の入力に `allow-config-updates: "true"` を指定してください。
+この入力は Wrangler の設定差分による停止を解除するため、対象 Worker の設定全体を確認してください。
