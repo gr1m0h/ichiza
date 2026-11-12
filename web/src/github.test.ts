@@ -90,7 +90,7 @@ describe('GitHubClient', () => {
       .mockResolvedValueOnce(Response.json({ ...issue, body: body.replace('- [ ]', '- [x]') }))
     const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
 
-    await client.updateTask(42, 'announce', { done: true }, issue.updated_at)
+    await client.updateTasks(42, [{ taskId: 'announce', done: true }], issue.updated_at)
 
     const patch = fetchMock.mock.calls[1]
     expect(patch?.[1]?.method).toBe('PATCH')
@@ -104,7 +104,7 @@ describe('GitHubClient', () => {
       .mockResolvedValueOnce(Response.json({ ...issue, body: body.replace('<!-- ichiza-task:{"id":"announce","due":"2026-10-25","labels":["announce"]} -->', '<!-- ichiza-task:{"id":"announce","due":"2026-10-25","assignee":"alice","labels":["announce"]} -->').replace('参加者へ告知する <!--', '参加者へ告知する · @alice <!--') }))
     const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
 
-    await client.updateTask(42, 'announce', { assignee: 'alice' }, issue.updated_at)
+    await client.updateTasks(42, [{ taskId: 'announce', assignees: ['alice'] }], issue.updated_at)
 
     const patch = fetchMock.mock.calls[1]
     expect(JSON.parse(String(patch?.[1]?.body))).toEqual({
@@ -112,11 +112,34 @@ describe('GitHubClient', () => {
     })
   })
 
+  it('patches multiple assignees once, preserving other tasks, checkboxes and notes', async () => {
+    const venue = '- [x] **2026-10-21** 会場 · @alice <!-- ichiza-task:{"id":"venue","due":"2026-10-21","assignee":"alice","labels":[]} -->'
+    const untouched = venue.replaceAll('venue', 'other')
+    const notes = `## Notes\n${venue}\n`
+    const original = body.replace('<!-- ichiza-tasks:end -->', `${venue}\n${untouched}\n<!-- ichiza-tasks:end -->`).replace('## Notes\n', notes)
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ ...issue, body: original }))
+      .mockImplementationOnce(async (_url, init) => Response.json({ ...issue, ...JSON.parse(String(init?.body)) }))
+    const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
+
+    const result = await client.updateTasks(42, [{ taskId: 'venue', assignees: [] }, { taskId: 'announce', assignees: ['alice', 'bob'], reminder: '2026-10-24', mentionAssignees: true }], issue.updated_at)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('PATCH')
+    expect(result.tasks.map(task => [task.id, task.assignees, task.done])).toEqual([
+      ['announce', ['alice', 'bob'], false], ['venue', [], true], ['other', ['alice'], true],
+    ])
+    expect(result.tasks[0]?.mention_assignees).toBe(true)
+    expect(result.tasks[0]?.reminder).toBe('2026-10-24')
+    expect(result.body).toContain(' · @alice @bob <!--')
+    expect(result.body).toContain(untouched)
+    expect(result.body.endsWith(notes)).toBe(true)
+  })
+
   it('rejects a stale update before patching GitHub', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json(issue))
     const client = new GitHubClient({ repository: 'gr1m0h/community', token: 'secret', fetch: fetchMock })
 
-    await expect(client.updateTask(42, 'announce', { done: true }, '2026-10-07T00:00:00Z')).rejects.toBeInstanceOf(
+    await expect(client.updateTasks(42, [{ taskId: 'announce', done: true }], '2026-10-07T00:00:00Z')).rejects.toBeInstanceOf(
       DashboardConflictError,
     )
     expect(fetchMock).toHaveBeenCalledTimes(1)

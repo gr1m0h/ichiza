@@ -1,6 +1,7 @@
 package remind
 
 import (
+	"encoding/json"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gr1m0h/ichiza/internal/dashboard"
 	"github.com/gr1m0h/ichiza/internal/event"
 	"github.com/gr1m0h/ichiza/internal/task"
 )
@@ -144,7 +146,7 @@ func TestMessage(t *testing.T) {
 	msg := Message(now, []EventDigest{{
 		Event: e,
 		Items: []Item{
-			{Task: task.Task{Title: "会場最終確認", Due: date(t, "2026-10-25"), Assignee: "alice"}, DaysLeft: -2},
+			{Task: task.Task{Title: "会場最終確認", Due: date(t, "2026-10-25")}, Assignees: []string{"alice"}, DaysLeft: -2},
 			{Task: task.Task{Title: "直前リマインド", Due: date(t, "2026-10-27"), Labels: []string{"announce"}}, DaysLeft: 0},
 			{Task: task.Task{Title: "配信リハ", Due: date(t, "2026-10-30"), Labels: []string{"streaming"}}, DaysLeft: 3},
 		},
@@ -154,13 +156,16 @@ func TestMessage(t *testing.T) {
 		"2026-10-27",
 		"SRE Lounge Hiroshima #1",
 		"期限超過 2日", "会場最終確認",
-		"<@U012ABC>",
+		"担当: alice",
 		"本日期限", "直前リマインド",
 		"あと3日", "配信リハ",
 	} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("message should contain %q:\n%s", want, msg)
 		}
+	}
+	if strings.Contains(msg, "<@") {
+		t.Fatalf("default reminder mentioned an assignee: %s", msg)
 	}
 	// Only tasks labeled "announce" get an X intent URL
 	if strings.Count(msg, "https://x.com/intent/post?text=") != 1 {
@@ -187,5 +192,61 @@ func TestXIntentURLWithoutConnpass(t *testing.T) {
 	text := parsed.Query().Get("text")
 	if !strings.Contains(text, "Meetup #1") || !strings.Contains(text, "2026-10-30") {
 		t.Errorf("text = %q", text)
+	}
+}
+
+// Exercise the issue format written by the Web editor through sync and the reminder digest.
+func TestWebReminderAfterDashboardSync(t *testing.T) {
+	tasks := []task.Task{
+		{ID: "venue", Title: "Venue", Due: date(t, "2026-12-01"), Assignee: "original"},
+		{ID: "mute", Title: "Muted", Due: date(t, "2026-11-01")},
+		{ID: "done", Title: "Done", Due: date(t, "2026-11-01")},
+	}
+	doc := dashboard.Document{Slug: "meetup", Title: "Meetup", Date: "2026-12-12"}
+	for _, item := range tasks {
+		doc.Tasks = append(doc.Tasks, dashboard.Item{Task: item})
+	}
+	const body = `<!-- ichiza-dashboard:v1 slug=meetup date=2026-12-12 -->
+# Meetup
+<!-- ichiza-tasks:start -->
+- [ ] **2026-12-01** Venue · @alice @bob <!-- ichiza-task:{"id":"venue","due":"2026-12-01","assignees":["alice","bob"],"assignee_source":"runtime","mention_assignees":true,"reminder":"2026-11-16"} -->
+- [ ] **2026-11-01** Muted <!-- ichiza-task:{"id":"mute","due":"2026-11-01","reminder":"off"} -->
+- [x] **2026-11-01** Done <!-- ichiza-task:{"id":"done","due":"2026-11-01","reminder":"2026-11-16"} -->
+<!-- ichiza-tasks:end -->`
+	merged, err := dashboard.Merge(body, doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	issues, err := json.Marshal([]map[string]string{{"body": merged}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := parseDashboardTasks(issues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	writeEventDir(t, dir, "meetup", "Meetup", "2026-12-12", "", tasks)
+	for _, day := range []string{"2026-11-15", "2026-11-16", "2026-11-17"} {
+		now := date(t, day)
+		digests, err := Collect(Options{EventsDir: dir, Now: now, WindowDays: 7, TaskStates: states})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if day != "2026-11-16" {
+			if len(digests) != 0 {
+				t.Fatalf("%s: unexpected digest %+v", day, digests)
+			}
+			continue
+		}
+		if len(digests) != 1 || len(digests[0].Items) != 1 || digests[0].Items[0].Task.ID != "venue" {
+			t.Fatalf("unexpected check date digest: %+v", digests)
+		}
+		msg := Message(now, digests, map[string]string{"alice": "U123", "bob": "U456"})
+		for _, want := range []string{"本日確認", "<@U123>", "<@U456>"} {
+			if !strings.Contains(msg, want) {
+				t.Fatalf("missing %s: %s", want, msg)
+			}
+		}
 	}
 }

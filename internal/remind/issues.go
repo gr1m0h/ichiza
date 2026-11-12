@@ -18,8 +18,10 @@ func taskKey(slug, id string) string {
 }
 
 type TaskState struct {
-	Done     bool
-	Assignee string
+	Done             bool
+	Assignees        []string
+	Reminder         string
+	MentionAssignees bool
 }
 
 // DashboardTasks returns runtime state from all labelled event Dashboard
@@ -53,7 +55,7 @@ func parseDashboardTasks(out []byte) (map[string]TaskState, error) {
 		}
 		seenSlugs[doc.Slug] = true
 		for _, item := range doc.Tasks {
-			states[taskKey(doc.Slug, item.ID)] = TaskState{Done: item.Done, Assignee: item.Assignee}
+			states[taskKey(doc.Slug, item.ID)] = TaskState{Done: item.Done, Assignees: item.CurrentAssignees(), Reminder: item.Reminder, MentionAssignees: item.MentionAssignees}
 		}
 	}
 	return states, nil

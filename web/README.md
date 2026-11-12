@@ -22,11 +22,14 @@
 
 `ICHIZA_GITHUB_TOKEN`はWrangler secretとして設定し、リポジトリへ保存しません。`ICHIZA_MEMBERS`のemailはCloudflare Accessで許可した本人のemailと一致させます。
 
-イベント詳細とMy Pageでは、Cloudflare Accessで認証された運営者が `ICHIZA_MEMBERS` に登録されたGitHub loginから担当者を選択できます。
-「未設定」を選ぶと担当を外せます。保存するとDashboard Issueの対象タスクに表示される `@login` とJSONメタデータを同時に更新します。
-完了状態と担当者の更新前にGitHubの `updated_at` を確認し、古い画面からの更新は409にします。
-担当者をWebから変更したタスクには `assignee_source: runtime` が付与されます。
-そのため `ichiza dashboard sync` を実行しても、Issue側の現在担当者・担当解除は維持されます。
+イベント詳細と My Page のタスク一覧で、完了状態、担当者（複数選択可）、Slack 通知を編集できます。
+変更した行には「未保存」と表示されます。「このタスクを保存」はその行だけを Dashboard Issue に反映し、ほかの行の入力は残します。一覧下部の「すべての変更を保存」は、そのイベントの未保存の行すべてを反映します。「変更を取り消す」で戻るのは未保存の入力だけです。
+Slack 通知は「期日に合わせて通知」（従来の期限判定）、「指定日だけ通知」、「通知しない」から選べます。
+初期設定では担当者名をテキストで表示します。「担当者をメンションする」を有効にすると、Slack ID を登録した担当者にメンションを付けます。
+指定日はリポジトリのタイムゾーンで判定し、その日に実行した `ichiza remind` が未完了タスクを通知対象に含めます。
+同じ日に再実行すると再度対象になります。Web から保存した共同担当と通知設定は Dashboard 同期後も引き継ぎます。
+運用環境では複数担当と通知設定に対応した CLI を dashboard・remind の両 workflow に適用してから Web を更新してください。
+更新前に GitHub の `updated_at` を確認し、古い画面からの更新には 409 を返します。
 GitHub APIは更新時の条件指定を提供しないため、確認直後の同時編集まで完全には防げない
 best-effortの競合検査です。
 

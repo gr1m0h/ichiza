@@ -14,8 +14,8 @@ const dashboard: EventDashboard = {
   date: '2026-11-01',
   body: 'dashboard body',
   tasks: [
-    { id: 'venue', title: '会場を確定する', due: '2026-10-06', assignee: 'alice', labels: [], done: false },
-    { id: 'announce', title: '参加者へ告知する', due: '2026-10-10', assignee: 'bob', labels: [], done: false },
+    { id: 'venue', title: '会場を確定する', due: '2026-10-06', assignees: ['bob', 'alice'], labels: [], done: false },
+    { id: 'announce', title: '参加者へ告知する', due: '2026-10-10', assignees: ['bob'], labels: [], done: false },
   ],
 }
 
@@ -24,7 +24,7 @@ function setup(repository?: DashboardRepository) {
     repository ??
     ({
       listDashboards: vi.fn().mockResolvedValue([dashboard]),
-      updateTask: vi.fn().mockResolvedValue(dashboard),
+      updateTasks: vi.fn().mockResolvedValue(dashboard),
     } satisfies DashboardRepository)
   const app = createApp({
     authenticate: vi.fn().mockResolvedValue({ email: 'alice@example.com', github: 'alice' }),
@@ -72,7 +72,7 @@ describe('ichiza web', () => {
     const future = { ...dashboard, slug: 'future', title: 'Future', tasks: [{ ...dashboard.tasks[0]!, due: '2026-10-08' }] }
     const repo: DashboardRepository = {
       listDashboards: vi.fn().mockResolvedValue([complete, today, future]),
-      updateTask: vi.fn(),
+      updateTasks: vi.fn(),
     }
     const { app } = setup(repo)
 
@@ -84,7 +84,7 @@ describe('ichiza web', () => {
 
     const emptyRepo: DashboardRepository = {
       listDashboards: vi.fn().mockResolvedValue([]),
-      updateTask: vi.fn(),
+      updateTasks: vi.fn(),
     }
     const emptyPage = await (await setup(emptyRepo).app.request('http://localhost/')).text()
     expect(emptyPage).toContain('イベントはまだありません')
@@ -96,12 +96,12 @@ describe('ichiza web', () => {
       updatedAt: undefined,
       tasks: [
         { ...dashboard.tasks[0]!, done: true },
-        { ...dashboard.tasks[1]!, due: '2026-10-07', assignee: undefined },
+        { ...dashboard.tasks[1]!, due: '2026-10-07', assignees: [] },
       ],
     }
     const repo: DashboardRepository = {
       listDashboards: vi.fn().mockResolvedValue([detailed]),
-      updateTask: vi.fn(),
+      updateTasks: vi.fn(),
     }
     const { app } = setup(repo)
 
@@ -111,13 +111,13 @@ describe('ichiza web', () => {
     expect(response.status).toBe(200)
     expect(page).toContain('GitHub Dashboard Issue')
     expect(page).toContain('2026-11-01')
-    expect(page).toContain('未完了に戻す')
+    expect(page).toContain('name="done.venue" value="true" checked')
     expect(page).toContain('今日')
-    expect(page).toContain('<select name="assignee">')
-    expect(page).toContain('<option value="alice" selected>alice</option>')
+    expect(page).toContain('name="notify.venue"')
+    expect(page).toContain('name="assign.venue" value="alice" checked')
 
     const savedPage = await (await app.request('http://localhost/events/hiroshima-3?saved=1')).text()
-    expect(savedPage).toContain('保存しました。GitHub Issueに反映されています。')
+    expect(savedPage).toContain('変更を保存しました。')
   })
 
   it('returns useful empty and not-found pages', async () => {
@@ -127,7 +127,7 @@ describe('ichiza web', () => {
 
     const emptyRepo: DashboardRepository = {
       listDashboards: vi.fn().mockResolvedValue([]),
-      updateTask: vi.fn(),
+      updateTasks: vi.fn(),
     }
     const myPage = await (await setup(emptyRepo).app.request('http://localhost/me')).text()
     expect(myPage).toContain('未完了の担当タスクはありません')
@@ -144,7 +144,30 @@ describe('ichiza web', () => {
     })
 
     expect(response.status).toBe(303)
-    expect(repo.updateTask).toHaveBeenCalledWith(42, 'venue', { done: true }, dashboard.updatedAt)
+    expect(repo.updateTasks).toHaveBeenCalledWith(42, [{ taskId: 'venue', done: true }], dashboard.updatedAt)
+  })
+
+  it('saves just the requested row and returns the revision to use for the remaining draft', async () => {
+    const updated = { ...dashboard, updatedAt: '2026-10-07T02:00:00Z', tasks: dashboard.tasks.map(task =>
+      task.id === 'venue' ? { ...task, done: true, assignees: ['alice'] } : task) }
+    const repo = { listDashboards: vi.fn().mockResolvedValueOnce([dashboard]).mockResolvedValue([updated]),
+      updateTasks: vi.fn().mockResolvedValue(updated) }
+    const { app } = setup(repo)
+    const headers = { Origin: 'http://localhost', 'X-Ichiza-Editor': 'event' }
+    const first = await app.request('http://localhost/events/hiroshima-3/tasks/venue', {
+      method: 'POST', headers, body: new URLSearchParams({ issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt!,
+        'done.venue': 'true', 'assign.venue': 'alice', 'notify.announce': 'date' }),
+    })
+    expect(first.status).toBe(200)
+    expect(repo.updateTasks).toHaveBeenCalledExactlyOnceWith(42, [{taskId: 'venue', done: true, assignees: ['alice']}], dashboard.updatedAt)
+    const version = (await first.text()).match(/name="expectedUpdatedAt" value="([^"]+)"/)?.[1]
+    expect(version).toBe(updated.updatedAt)
+    const second = await app.request('http://localhost/events/hiroshima-3/tasks', {
+      method: 'POST', headers, body: new URLSearchParams({ issueNumber: '42', expectedUpdatedAt: version!,
+        'notify.announce': 'date', 'date.announce': '2026-10-09' }),
+    })
+    expect(second.status).toBe(200)
+    expect(repo.updateTasks).toHaveBeenLastCalledWith(42, [{taskId: 'announce', reminder: '2026-10-09'}], version)
   })
 
   it('assigns a task to a configured member', async () => {
@@ -158,7 +181,41 @@ describe('ichiza web', () => {
     })
 
     expect(response.status).toBe(303)
-    expect(repo.updateTask).toHaveBeenCalledWith(42, 'venue', { assignee: 'bob' }, dashboard.updatedAt)
+    expect(repo.updateTasks).toHaveBeenCalledWith(42, [{ taskId: 'venue', assignees: ['bob'] }], dashboard.updatedAt)
+  })
+
+  it('saves multiple owners, completion and reminders in one update, skipping unchanged rows', async () => {
+    const { app, repo } = setup()
+    const body = new URLSearchParams({
+      issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt!, 'assign.announce': '',
+      'mention.announce': 'true', 'done.announce': 'true', 'notify.announce': 'date', 'date.announce': '2026-11-16',
+      'assign.venue': 'alice', 'notify.venue': 'default',
+    })
+    body.append('assign.announce', 'alice')
+    body.append('assign.announce', 'bob')
+    body.append('assign.venue', 'bob')
+    const response = await app.request('http://localhost/events/hiroshima-3/tasks', {
+      method: 'POST', headers: { Origin: 'http://localhost' }, body,
+    })
+    expect(response.status).toBe(303)
+    expect(repo.updateTasks).toHaveBeenCalledExactlyOnceWith(42, [{
+      taskId: 'announce', assignees: ['alice', 'bob'], done: true, reminder: '2026-11-16', mentionAssignees: true,
+    }], dashboard.updatedAt)
+  })
+
+  it.each([
+    ['assign.announce', 'unknown-member', dashboard.updatedAt!, 400],
+    ['assign.missing', 'alice', dashboard.updatedAt!, 404],
+    ['notify.announce', 'date', dashboard.updatedAt!, 400],
+    ['assign.announce', 'alice', 'stale-version', 409],
+  ] as const)('rejects the whole batch for %s=%s at %s', async (key, value, version, status) => {
+    const { app, repo } = setup()
+    const response = await app.request('http://localhost/events/hiroshima-3/tasks', {
+      method: 'POST', headers: { Origin: 'http://localhost' },
+      body: new URLSearchParams({ issueNumber: '42', expectedUpdatedAt: version, 'assign.venue': 'bob', [key]: value }),
+    })
+    expect(response.status).toBe(status)
+    expect(repo.updateTasks).not.toHaveBeenCalled()
   })
 
   it('allows unassigning a task', async () => {
@@ -172,7 +229,7 @@ describe('ichiza web', () => {
     })
 
     expect(response.status).toBe(303)
-    expect(repo.updateTask).toHaveBeenCalledWith(42, 'venue', { assignee: '' }, dashboard.updatedAt)
+    expect(repo.updateTasks).toHaveBeenCalledWith(42, [{ taskId: 'venue', assignees: [] }], dashboard.updatedAt)
   })
 
   it('rejects assigning a task to an unconfigured member', async () => {
@@ -184,13 +241,13 @@ describe('ichiza web', () => {
     })
 
     expect(response.status).toBe(400)
-    expect(repo.updateTask).not.toHaveBeenCalled()
+    expect(repo.updateTasks).not.toHaveBeenCalled()
   })
 
   it('returns a guided conflict page instead of overwriting GitHub changes', async () => {
     const repo: DashboardRepository = {
       listDashboards: vi.fn().mockResolvedValue([dashboard]),
-      updateTask: vi.fn().mockRejectedValue(new DashboardConflictError()),
+      updateTasks: vi.fn().mockRejectedValue(new DashboardConflictError()),
     }
     const { app } = setup(repo)
     const form = new URLSearchParams({ done: 'true', issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt ?? '' })
@@ -214,7 +271,7 @@ describe('ichiza web', () => {
     })
 
     expect(response.status).toBe(403)
-    expect(repo.updateTask).not.toHaveBeenCalled()
+    expect(repo.updateTasks).not.toHaveBeenCalled()
   })
 
   it('rejects invalid or mismatched task updates', async () => {
@@ -233,7 +290,7 @@ describe('ichiza web', () => {
       body: new URLSearchParams({ done: 'true', issueNumber: '42', expectedUpdatedAt: dashboard.updatedAt ?? '' }),
     })
     expect(mismatch.status).toBe(404)
-    expect(repo.updateTask).not.toHaveBeenCalled()
+    expect(repo.updateTasks).not.toHaveBeenCalled()
   })
 
   it('returns the authentication failure status', async () => {
@@ -261,7 +318,7 @@ describe('ichiza web', () => {
   ])('returns a guided upstream error page for $error.name', async ({ error, log }) => {
     const repo: DashboardRepository = {
       listDashboards: vi.fn().mockRejectedValue(error),
-      updateTask: vi.fn(),
+      updateTasks: vi.fn(),
     }
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
