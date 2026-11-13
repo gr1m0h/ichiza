@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.5.4](https://github.com/gr1m0h/ichiza/compare/v0.5.3...v0.5.4) - 2026-11-13
+
+- Update dependency wrangler to v4.161.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/63
+- Update dependency wrangler to v4.162.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/65
+
 ## [v0.5.3](https://github.com/gr1m0h/ichiza/compare/v0.5.2...v0.5.3) - 2026-11-12
 
 - fix: Worker のデプロイ設定を Wrangler の差分検査に反映する by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/61
