@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.5.4](https://github.com/gr1m0h/ichiza/compare/v0.5.3...v0.5.4) - 2026-11-17
+
+- Update dependency wrangler to v4.161.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/63
+- Update dependency wrangler to v4.162.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/65
+- Update dependency hono to v4.13.19 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/66
+- feat: イベントダッシュボードと運営メトリクスを追加 by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/68
+- Update dependency wrangler to v4.163.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/67
+- Update actions/setup-go action to v7.1.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/70
+- Update dependency node to v24.22.3 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/69
+
 ## [v0.5.3](https://github.com/gr1m0h/ichiza/compare/v0.5.2...v0.5.3) - 2026-11-12
 
 - fix: Worker のデプロイ設定を Wrangler の差分検査に反映する by @gr1m0h in https://github.com/gr1m0h/ichiza/pull/61
