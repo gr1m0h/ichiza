@@ -112,7 +112,7 @@ func createDashboardIssue(e *event.Event, tasks []lifecycle.Task) error {
 	// Best effort: the shared label may already exist.
 	_ = execCommand("gh", "label", "create", "ichiza:event").Run()
 	cmd := execCommand("gh", "issue", "create",
-		"--title", e.Event.Title+" 運営Dashboard",
+		"--title", "[ichiza] Event Hub｜"+e.Event.Title,
 		"--body", body,
 		"--label", "ichiza:event",
 	)

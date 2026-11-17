@@ -4,6 +4,11 @@ package dashboard
 
 import "github.com/gr1m0h/ichiza/internal/task"
 
+type Activity struct {
+	At   string `json:"at"`
+	Done bool   `json:"done"`
+}
+
 type Item struct {
 	task.Task
 	Done             bool
@@ -11,6 +16,11 @@ type Item struct {
 	Assignees        []string
 	MentionAssignees bool
 	Reminder         string // empty for deadline reminders, "off", or a local YYYY-MM-DD
+	TaskSource       string
+	Deleted          bool
+	CreatedAt        string
+	CompletedAt      string
+	History          []Activity
 }
 
 func (item Item) CurrentAssignees() []string {

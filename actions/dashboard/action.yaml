@@ -18,3 +18,5 @@ runs:
       env:
         INPUT_ISSUE_NUMBER: ${{ inputs.issue-number }}
         GH_TOKEN: ${{ env.GH_TOKEN }}
+    - name: Refresh shared metrics after reconciliation
+      uses: gr1m0h/ichiza/actions/metrics@v0

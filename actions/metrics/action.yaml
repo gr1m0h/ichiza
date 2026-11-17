@@ -1,0 +1,25 @@
+name: ichiza metrics sync
+description: Create or refresh the shared metrics Issue outside page requests
+inputs:
+  repository:
+    description: Target owner/repository (defaults to the current repository)
+    default: ""
+  timezone:
+    description: Timezone for metrics (keeps the existing index timezone when empty)
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: "24.22.1"
+    - run: npm ci
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../web
+    - run: npm run metrics:sync
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../web
+      env:
+        ICHIZA_REPOSITORY: ${{ inputs.repository || env.GH_REPO || github.repository }}
+        ICHIZA_TIMEZONE: ${{ inputs.timezone || env.ICHIZA_TIMEZONE }}
+        ICHIZA_GITHUB_TOKEN: ${{ env.ICHIZA_GITHUB_TOKEN || env.GH_TOKEN || github.token }}

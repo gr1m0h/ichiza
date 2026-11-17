@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { DashboardConflictError, GitHubClient } from './github'
+import { parseDashboard } from './dashboard'
+import { createAggregate, renderAggregate, validateAggregate, RecordConflictError } from './records'
 
 const body = `<!-- ichiza-dashboard:v1 slug=hiroshima-3 date=2026-11-01 -->
 
@@ -190,5 +192,109 @@ describe('GitHubClient', () => {
     expect(() => new GitHubClient({ repository: 'gr1m0h/community', token: ' \n ' })).toThrow(
       'ICHIZA_GITHUB_TOKEN is required',
     )
+  })
+})
+
+
+describe('GitHub cross-event metrics', () => {
+  const closedIssue={...issue,state:'closed' as const,closed_at:'2026-11-13T00:00:00Z'}
+  const closed={...parseDashboard(body,issue.number,issue.html_url,issue.updated_at),state:'closed' as const,closedAt:closedIssue.closed_at}
+  const snapshot=createAggregate([closed],'Asia/Tokyo','2026-11-13T01:00:00Z')
+  const metricsIssue={...issue,number:99,body:renderAggregate(snapshot)}
+  const expected={issueNumber:99,updatedAt:metricsIssue.updated_at}
+  const savedResponse=async(_url:unknown,init?:RequestInit)=>Response.json({...metricsIssue,...JSON.parse(String(init?.body))})
+  const client=(mock:typeof fetch)=>new GitHubClient({repository:'gr1m0h/community',token:'secret',fetch:mock})
+
+  it('keeps GitHub Issue state and Close time when reading individual event records', async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValue(Response.json([closedIssue]))
+    expect((await client(mock).listDashboards())[0]).toMatchObject({state:'closed',closedAt:closedIssue.closed_at})
+  })
+  it('finds the one metrics Issue and skips unrelated labelled Issues and pull requests across pages',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(Array.from({length:100},()=>({...issue,body:'ordinary label use'}))))
+      .mockResolvedValueOnce(Response.json([metricsIssue,{...metricsIssue,pull_request:{}}]))
+    expect((await client(mock).loadAggregate())?.issueNumber).toBe(99)
+    expect(mock.mock.calls[1]?.[0]).toContain('labels=ichiza%3Ametrics&per_page=100&page=2')
+  })
+  it('creates a dedicated aggregate Issue with a metrics label, without creating event record Issues',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([closedIssue])).mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(new Response('',{status:404})).mockResolvedValueOnce(Response.json({name:'ichiza:metrics'})).mockImplementationOnce(savedResponse)
+    expect((await client(mock).saveAggregate(validateAggregate(JSON.parse(JSON.stringify(snapshot))),null)).issueNumber).toBe(99)
+    expect(JSON.parse(String(mock.mock.calls[4]?.[1]?.body))).toEqual({title:'[ichiza] Insights',body:renderAggregate(snapshot),labels:['ichiza:metrics']})
+    expect(mock.mock.calls[4]?.[1]?.method).toBe('POST')
+  })
+  it('updates the same aggregate Issue instead of creating one per event or save',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([closedIssue])).mockResolvedValueOnce(Response.json([metricsIssue]))
+      .mockResolvedValueOnce(Response.json(metricsIssue)).mockImplementationOnce(savedResponse)
+    await client(mock).saveAggregate(snapshot,expected)
+    expect(mock.mock.calls[3]?.[0]).toContain('/issues/99')
+    expect(mock.mock.calls[3]?.[1]?.method).toBe('PATCH')
+  })
+  it('rejects changed, newly closed or reopened event populations and forged metrics before writing',async()=>{
+    for(const sources of [[{...closedIssue,updated_at:'2026-11-13T02:00:00Z'}],[{...closedIssue,state:'open'}],
+      [closedIssue,{...closedIssue,number:43,body:body.replaceAll('hiroshima-3','other-event')}]] ){
+      const mock=vi.fn<typeof fetch>().mockResolvedValue(Response.json(sources))
+      await expect(client(mock).saveAggregate(snapshot,null)).rejects.toBeInstanceOf(RecordConflictError)
+      expect(mock).toHaveBeenCalledTimes(1)
+    }
+    const mock=vi.fn<typeof fetch>().mockResolvedValue(Response.json([closedIssue]))
+    await expect(client(mock).saveAggregate({...snapshot,events:[]},null)).rejects.toBeInstanceOf(RecordConflictError)
+  })
+  it('rejects duplicate creation retries, manual edits and duplicate aggregate Issues',async()=>{
+    for(const [records,revision] of [[[metricsIssue],null],[[{...metricsIssue,updated_at:'2026-11-13T02:00:00Z'}],expected],[[metricsIssue,metricsIssue],expected]] as const){
+      const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([closedIssue])).mockResolvedValueOnce(Response.json(records))
+      await expect(client(mock).saveAggregate(snapshot,revision)).rejects.toBeInstanceOf(RecordConflictError)
+      expect(mock).toHaveBeenCalledTimes(2)
+    }
+  })
+  it('rechecks the selected metrics Issue body before an update',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([closedIssue])).mockResolvedValueOnce(Response.json([metricsIssue]))
+      .mockResolvedValueOnce(Response.json({...metricsIssue,body:metricsIssue.body+'manual edit'}))
+    await expect(client(mock).saveAggregate(snapshot,expected)).rejects.toBeInstanceOf(RecordConflictError)
+    expect(mock).toHaveBeenCalledTimes(3)
+  })
+  it('handles a label creation race and stops when label access fails',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([closedIssue])).mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(new Response('',{status:404})).mockResolvedValueOnce(new Response('',{status:422}))
+      .mockResolvedValueOnce(Response.json({name:'ichiza:metrics'})).mockImplementationOnce(savedResponse)
+    await expect(client(mock).saveAggregate(snapshot,null)).resolves.toMatchObject({issueNumber:99})
+    const forbidden=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([closedIssue])).mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(new Response('',{status:403}))
+    await expect(client(forbidden).saveAggregate(snapshot,null)).rejects.toThrow('403')
+    expect(forbidden).toHaveBeenCalledTimes(3)
+  })
+})
+
+
+describe('automatic metrics synchronization',()=>{
+  const closed={...issue,state:'closed',closed_at:'2026-11-13T00:00:00Z'}
+  const source={...parseDashboard(body,issue.number,issue.html_url,issue.updated_at),state:'closed' as const,closedAt:closed.closed_at}
+  const snapshot=createAggregate([source],'Asia/Tokyo','2026-11-13T01:00:00.000Z')
+  const index={...issue,number:99,body:renderAggregate(snapshot)}
+  const client=(mock:typeof fetch)=>new GitHubClient({repository:'gr1m0h/community',token:'secret',fetch:mock})
+  it('initializes one empty aggregate before any event is Closed',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([])).mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json({name:'ichiza:metrics'})).mockImplementationOnce(async(_url,init)=>Response.json({...index,...JSON.parse(String(init?.body))}))
+    const record=await client(mock).syncAggregate('Asia/Tokyo',new Date('2026-11-13T01:00:00Z'))
+    expect(record.snapshot.events).toEqual([])
+    expect(mock.mock.calls.filter(call=>call[1]?.method==='POST')).toHaveLength(1)
+  })
+  it('skips a write when the index data has not changed',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([closed])).mockResolvedValueOnce(Response.json([index]))
+    expect((await client(mock).syncAggregate('Asia/Tokyo',new Date('2026-11-14T00:00:00Z'))).issueNumber).toBe(99)
+    expect(mock).toHaveBeenCalledTimes(2)
+    expect(mock.mock.calls.some(call=>call[1]?.method==='PATCH')).toBe(false)
+  })
+  it('updates the same Issue after an event is reopened',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json([{...closed,state:'open'}])).mockResolvedValueOnce(Response.json([index]))
+      .mockResolvedValueOnce(Response.json(index)).mockImplementationOnce(async(_url,init)=>Response.json({...index,...JSON.parse(String(init?.body))}))
+    const updated=await client(mock).syncAggregate('Asia/Tokyo',new Date('2026-11-14T00:00:00Z'))
+    expect(updated.issueNumber).toBe(99)
+    expect(updated.snapshot.events).toEqual([])
+    expect(mock.mock.calls[3]?.[1]?.method).toBe('PATCH')
+  })
+  it('loads a single source Issue without pagination or scanning',async()=>{
+    const mock=vi.fn<typeof fetch>().mockResolvedValue(Response.json(closed))
+    expect((await client(mock).getDashboard(42))?.state).toBe('closed')
+    expect(mock).toHaveBeenCalledExactlyOnceWith('https://api.github.com/repos/gr1m0h/community/issues/42',expect.anything())
   })
 })

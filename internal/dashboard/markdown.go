@@ -18,17 +18,22 @@ const (
 var (
 	dashboardMarker = regexp.MustCompile(`^<!-- ichiza-dashboard:v1 slug=([a-z0-9][a-z0-9-]*) date=(\d{4}-\d{2}-\d{2}) -->$`)
 	managedTaskLine = regexp.MustCompile(`^- \[([ xX])\] \*\*(\d{4}-\d{2}-\d{2})\*\* (.+?)(?: · @([A-Za-z0-9-]+(?: @[A-Za-z0-9-]+)*))? <!-- ichiza-task:(\{.*\}) -->\r?$`)
+	deletedTaskLine = regexp.MustCompile(`^<!-- ichiza-deleted-task:([a-z0-9][a-z0-9-]*) -->$`)
 )
 
 type metadata struct {
-	ID               string   `json:"id"`
-	Due              string   `json:"due"`
-	Assignee         string   `json:"assignee,omitempty"`
-	Assignees        []string `json:"assignees,omitempty"`
-	MentionAssignees bool     `json:"mention_assignees,omitempty"`
-	Reminder         string   `json:"reminder,omitempty"`
-	AssigneeSource   string   `json:"assignee_source,omitempty"`
-	Labels           []string `json:"labels,omitempty"`
+	ID               string     `json:"id"`
+	Due              string     `json:"due"`
+	Assignee         string     `json:"assignee,omitempty"`
+	Assignees        []string   `json:"assignees,omitempty"`
+	MentionAssignees bool       `json:"mention_assignees,omitempty"`
+	Reminder         string     `json:"reminder,omitempty"`
+	AssigneeSource   string     `json:"assignee_source,omitempty"`
+	Labels           []string   `json:"labels,omitempty"`
+	TaskSource       string     `json:"task_source,omitempty"`
+	CreatedAt        string     `json:"created_at,omitempty"`
+	CompletedAt      string     `json:"completed_at,omitempty"`
+	History          []Activity `json:"history,omitempty"`
 }
 
 func Render(doc Document) (string, error) {
@@ -50,9 +55,18 @@ func Render(doc Document) (string, error) {
 			return "", fmt.Errorf("duplicate task id %q", item.ID)
 		}
 		seen[item.ID] = true
+		if item.Deleted {
+			line := "<!-- ichiza-deleted-task:" + item.ID + " -->"
+			if !deletedTaskLine.MatchString(line) {
+				return "", fmt.Errorf("invalid deleted task id %q", item.ID)
+			}
+			fmt.Fprintln(&out, line)
+			continue
+		}
 		meta, err := json.Marshal(metadata{
 			ID: item.ID, Due: item.Due.Format("2006-01-02"),
 			Assignee: item.Assignee, Assignees: item.Assignees, Reminder: item.Reminder, MentionAssignees: item.MentionAssignees, AssigneeSource: item.AssigneeSource, Labels: item.Labels,
+			TaskSource: item.TaskSource, CreatedAt: item.CreatedAt, CompletedAt: item.CompletedAt, History: item.History,
 		})
 		if err != nil {
 			return "", fmt.Errorf("task %q metadata: %w", item.ID, err)
@@ -114,6 +128,15 @@ func Parse(body string) (Document, error) {
 			}
 			continue
 		}
+		if deleted := deletedTaskLine.FindStringSubmatch(line); deleted != nil {
+			if seen[deleted[1]] {
+				return Document{}, fmt.Errorf("duplicate task id %q", deleted[1])
+			}
+			seen[deleted[1]] = true
+			// Tombstones are not outstanding work when reconciling the Issue state.
+			doc.Tasks = append(doc.Tasks, Item{Task: task.Task{ID: deleted[1]}, Deleted: true, Done: true})
+			continue
+		}
 		match := managedTaskLine.FindStringSubmatch(line)
 		if match == nil {
 			if line == "" {
@@ -166,11 +189,29 @@ func Parse(body string) (Document, error) {
 		if meta.AssigneeSource != "" && meta.AssigneeSource != "runtime" {
 			return Document{}, fmt.Errorf("task %q has unsupported assignee source %q", meta.ID, meta.AssigneeSource)
 		}
+		if meta.TaskSource != "" && meta.TaskSource != "runtime" {
+			return Document{}, fmt.Errorf("unsupported task source %q", meta.TaskSource)
+		}
+		for _, timestamp := range append([]string{meta.CreatedAt, meta.CompletedAt}, activityTimes(meta.History)...) {
+			if timestamp != "" {
+				if _, err := time.Parse(time.RFC3339Nano, timestamp); err != nil {
+					return Document{}, fmt.Errorf("invalid task timestamp: %w", err)
+				}
+			}
+		}
 		doc.Tasks = append(doc.Tasks, Item{Task: task.Task{
 			ID: meta.ID, Title: match[3], Due: due, Assignee: meta.Assignee, Labels: meta.Labels,
-		}, Assignees: meta.Assignees, Reminder: meta.Reminder, MentionAssignees: meta.MentionAssignees, Done: strings.EqualFold(match[1], "x"), AssigneeSource: meta.AssigneeSource})
+		}, Assignees: meta.Assignees, Reminder: meta.Reminder, MentionAssignees: meta.MentionAssignees, Done: strings.EqualFold(match[1], "x"), AssigneeSource: meta.AssigneeSource, TaskSource: meta.TaskSource, CreatedAt: meta.CreatedAt, CompletedAt: meta.CompletedAt, History: meta.History})
 	}
 	return Document{}, fmt.Errorf("missing tasks end marker")
+}
+
+func activityTimes(history []Activity) []string {
+	result := make([]string, 0, len(history))
+	for _, activity := range history {
+		result = append(result, activity.At)
+	}
+	return result
 }
 
 // Merge replaces the managed event and task data while preserving checkbox
@@ -192,14 +233,30 @@ func Merge(current string, desired Document) (string, error) {
 	copy(merged.Tasks, desired.Tasks)
 	for i := range merged.Tasks {
 		if existing, ok := existingByID[merged.Tasks[i].ID]; ok {
+			if existing.Deleted || existing.TaskSource == "runtime" {
+				merged.Tasks[i] = existing
+				continue
+			}
 			merged.Tasks[i].Done = existing.Done
 			merged.Tasks[i].Reminder = existing.Reminder
 			merged.Tasks[i].MentionAssignees = existing.MentionAssignees
+			merged.Tasks[i].CreatedAt = existing.CreatedAt
+			merged.Tasks[i].CompletedAt = existing.CompletedAt
+			merged.Tasks[i].History = existing.History
 			if existing.AssigneeSource == "runtime" {
 				merged.Tasks[i].Assignee = existing.Assignee
 				merged.Tasks[i].Assignees = existing.Assignees
 				merged.Tasks[i].AssigneeSource = existing.AssigneeSource
 			}
+		}
+	}
+	mergedIDs := make(map[string]bool, len(merged.Tasks))
+	for _, item := range merged.Tasks {
+		mergedIDs[item.ID] = true
+	}
+	for _, item := range existing.Tasks {
+		if !mergedIDs[item.ID] && (item.Deleted || item.TaskSource == "runtime") {
+			merged.Tasks = append(merged.Tasks, item)
 		}
 	}
 	rendered, err := Render(merged)

@@ -168,7 +168,7 @@ func TestCreateDashboardIssue(t *testing.T) {
 	if !strings.Contains(issue, "issue create") {
 		t.Errorf("second call should create issue: %v", calls[1])
 	}
-	if !strings.Contains(issue, "Test #4 運営Dashboard") {
+	if !strings.Contains(issue, "[ichiza] Event Hub｜Test #4") {
 		t.Errorf("issue title should identify event dashboard: %v", calls[1])
 	}
 	if !strings.Contains(issue, "--label ichiza:event") || !strings.Contains(issue, "ichiza-dashboard:v1") {

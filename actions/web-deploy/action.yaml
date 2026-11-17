@@ -32,6 +32,13 @@ runs:
       run: npm ci
       shell: bash
       working-directory: ${{ github.action_path }}/../../web
+    - name: Initialize shared metrics before serving the Web UI
+      run: npm run metrics:sync
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../web
+      env:
+        ICHIZA_REPOSITORY: ${{ inputs.repository || github.repository }}
+        ICHIZA_TIMEZONE: ${{ inputs.timezone }}
     - name: Deploy Worker
       run: |
         : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN is required}"

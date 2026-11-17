@@ -28,7 +28,7 @@ $ gh secret set SLACK_WEBHOOK_URL --repo <owner>/<repo>
 
 イベント作成は Actions タブ → **ichiza new** → **Run workflow**。
 `events/<slug>/event.yaml` + `tasks.yaml` のPRと、開催日から逆算したタスクを持つ
-Dashboard Issueが1件生成されます。完了操作はDashboardのCheckboxで行います。
+Event Hub Issueが1件生成されます。完了操作はDashboardのCheckboxで行います。
 セットアップの詳細と日々の運用は
 [starter の README](https://github.com/gr1m0h/ichiza-starter) を参照してください。
 
@@ -37,7 +37,7 @@ Dashboard Issueが1件生成されます。完了操作はDashboardのCheckbox�
 ```text
 gr1m0h/ichiza          # 本体: CLI + composite actions
 ├── actions/setup      # CLI インストール
-├── actions/new        # イベント作成（scaffold → PR + Dashboard Issue）
+├── actions/new        # イベント作成（scaffold → PR + Event Hub Issue）
 ├── actions/dashboard  # Checkbox完了状態に応じたIssue close/reopen
 ├── actions/remind     # 期限リマインド（cron）
 ├── actions/registry   # 募集ページ本文の再生成（event.yaml 更新時）
@@ -56,7 +56,7 @@ Actions の中身は同じ CLI なので、ローカルでも実行できます�
 $ go install github.com/gr1m0h/ichiza@latest
 
 $ ichiza new --slug tokyo-3 --title "Your Meetup #3" --date 2026-11-28
-$ ichiza new ... --dashboard      # 1イベント = 1 Dashboard Issueを作成
+$ ichiza new ... --dashboard      # 1イベント = 1 Event Hub Issueを作成
 
 $ ichiza remind [--notify slack]  # 期限超過 + 7日以内のタスクを表示 / Slack 通知
 $ ichiza dashboard reconcile --issue 42 # 全完了ならclose、未完了ならreopen
@@ -67,10 +67,13 @@ $ export CONNPASS_API_KEY=...     # connpass サポートへの申請制
 $ ichiza watch [--notify slack]   # 開催前イベントの申込数 / 補欠 / 受付状態
 ```
 
-- タスク管理は1イベント = 1 Dashboard Issue。各タスクはトップレベルCheckboxで、
+- タスク管理は1イベント = 1 Event Hub Issue。各タスクはトップレベルCheckboxで、
   Checkboxだけが完了状態の正本です。GitHub Projectsでは1イベントを1カードとして扱えます。
 - `dashboard sync` は event/tasks 定義を再反映し、task ID ごとの完了状態と Notes を保持
 - `remind` は announce ラベルのタスクに X の投稿画面を開く intent URL を添付
+  Slack通知はイベントごとの見出し、期限超過／今日期限／本日確認／期限間近の分類、タスクの期日・担当者を別々に表示します。Event Hubのリンクから元Issueを開けます。
+  担当者メンションはタスク設定がオンの場合だけ行います。通知欄・読み上げ向けの本文も付け、リンクのプレビューは展開しません。
+  [Block Kitの50ブロック上限](https://docs.slack.dev/reference/block-kit/blocks/)や本文長を超える場合は、タスクを省略せず複数メッセージに分割します。分割送信の途中で失敗した場合、先行分は配信済みの可能性があり、自動再送はしません。
 - `registry` は connpass に書き込み API がないため「コピーして新規作成 → ペースト」
   まで人間の作業を圧縮する設計。本文テンプレートは運営リポジトリ側でカスタマイズ可能
 - `watch` は `registry.type` で adapter を選択。connpass 以外のサービスは
@@ -78,7 +81,7 @@ $ ichiza watch [--notify slack]   # 開催前イベントの申込数 / 補欠 /
 
 ## Web コックピット（任意・alpha）
 
-`web/` は Hono + Cloudflare Workers のDBなし構成です。GitHubのDashboard Issueを正本として、
+`web/` は Hono + Cloudflare Workers のDBなし構成です。GitHubのEvent Hub Issueを正本として、
 イベント一覧・詳細・My Page・期限状態・チェック操作を提供します。運営リポジトリ側は
 starterの `ichiza-web.yml` から共通の `actions/web-deploy` を呼ぶだけで、Web実装を複製しません。
 

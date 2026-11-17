@@ -223,8 +223,10 @@ func cmdRemind(args []string) error {
 		if url == "" {
 			return fmt.Errorf("--notify slack requires SLACK_WEBHOOK_URL")
 		}
-		if err := notify.Slack(url, msg); err != nil {
-			return err
+		for index, message := range remind.SlackMessages(now, digests, cfg.SlackUsersByGitHub()) {
+			if err := notify.SlackRich(url, message); err != nil {
+				return fmt.Errorf("remind message %d (earlier messages may already be delivered): %w", index+1, err)
+			}
 		}
 		fmt.Printf("remind: %d event(s) notified to slack\n", len(digests))
 	default:
