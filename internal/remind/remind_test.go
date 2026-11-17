@@ -217,7 +217,7 @@ func TestWebReminderAfterDashboardSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	issues, err := json.Marshal([]map[string]string{{"body": merged}})
+	issues, err := json.Marshal([]map[string]string{{"body": merged, "url": "https://github.example/operations/issues/42"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,11 +242,75 @@ func TestWebReminderAfterDashboardSync(t *testing.T) {
 		if len(digests) != 1 || len(digests[0].Items) != 1 || digests[0].Items[0].Task.ID != "venue" {
 			t.Fatalf("unexpected check date digest: %+v", digests)
 		}
+		if digests[0].IssueURL != "https://github.example/operations/issues/42" {
+			t.Fatalf("source Issue URL was lost: %q", digests[0].IssueURL)
+		}
 		msg := Message(now, digests, map[string]string{"alice": "U123", "bob": "U456"})
 		for _, want := range []string{"本日確認", "<@U123>", "<@U456>"} {
 			if !strings.Contains(msg, want) {
 				t.Fatalf("missing %s: %s", want, msg)
 			}
 		}
+	}
+}
+
+// This fixture follows the Web writer's metadata contract, including the
+// deletion tombstone. Exercise sync and reminders together so neither can
+// silently resurrect removed work or drop Web-created tasks and history.
+func TestWebTaskLifecycleSurvivesSyncAndReminders(t *testing.T) {
+	current := `<!-- ichiza-dashboard:v1 slug=web-event date=2026-11-01 -->
+# Web event
+<!-- ichiza-tasks:start -->
+<!-- ichiza-deleted-task:removed -->
+- [ ] **2026-10-27** 配信テスト · @alice @bob <!-- ichiza-task:{"id":"web-added","due":"2026-10-27","labels":[],"task_source":"runtime","created_at":"2026-10-25T00:00:00.000Z","assignees":["alice","bob"],"assignee_source":"runtime","history":[{"at":"2026-10-26T00:00:00.000Z","done":true},{"at":"2026-10-27T00:00:00.000Z","done":false}]} -->
+- [x] **2026-10-26** 完了タスク <!-- ichiza-task:{"id":"done","due":"2026-10-26","completed_at":"2026-10-26T01:00:00.000Z","history":[{"at":"2026-10-26T01:00:00.000Z","done":true}]} -->
+<!-- ichiza-tasks:end -->
+## Notes
+運営メモ
+`
+	desired := dashboard.Document{Slug: "web-event", Title: "Web event", Date: "2026-11-01", Tasks: []dashboard.Item{
+		{Task: task.Task{ID: "removed", Title: "復活させない", Due: date(t, "2026-10-25")}},
+		{Task: task.Task{ID: "done", Title: "完了タスク", Due: date(t, "2026-10-26")}},
+	}}
+	for range 2 {
+		var err error
+		current, err = dashboard.Merge(current, desired)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	parsed, err := dashboard.Parse(current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed.Tasks) != 3 || !parsed.Tasks[0].Deleted || !parsed.Tasks[1].Done || parsed.Tasks[1].CompletedAt != "2026-10-26T01:00:00.000Z" || len(parsed.Tasks[1].History) != 1 || parsed.Tasks[2].TaskSource != "runtime" || len(parsed.Tasks[2].History) != 2 {
+		t.Fatalf("sync lost lifecycle state: %+v", parsed.Tasks)
+	}
+	if !strings.Contains(current, "運営メモ") {
+		t.Fatal("sync lost notes")
+	}
+	payload, err := json.Marshal([]map[string]string{{"body": current, "url": "https://example.test/42"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	states, err := parseDashboardTasks(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventsDir := t.TempDir()
+	writeEventDir(t, eventsDir, "web-event", "Web event", "2026-11-01", "", []task.Task{desired.Tasks[0].Task, desired.Tasks[1].Task})
+	digests, err := Collect(Options{EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7, TaskStates: states})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(digests) != 1 || len(digests[0].Items) != 1 || digests[0].Items[0].Task.ID != "web-added" || strings.Join(digests[0].Items[0].Assignees, ",") != "alice,bob" {
+		t.Fatalf("wrong reminder tasks after sync: %+v", digests)
+	}
+	// A runtime ID that later appears in YAML keeps the Web definition and is
+	// emitted once, rather than generating duplicate notifications.
+	writeEventDir(t, eventsDir, "web-event", "Web event", "2026-11-01", "", []task.Task{{ID: "web-added", Title: "古い定義", Due: date(t, "2026-12-31")}})
+	digests, err = Collect(Options{EventsDir: eventsDir, Now: date(t, "2026-10-27"), WindowDays: 7, TaskStates: states})
+	if err != nil || len(digests) != 1 || len(digests[0].Items) != 1 || digests[0].Items[0].Task.Title != "配信テスト" {
+		t.Fatalf("runtime collision: %+v, %v", digests, err)
 	}
 }

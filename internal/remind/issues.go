@@ -8,6 +8,7 @@ import (
 	"os/exec"
 
 	"github.com/gr1m0h/ichiza/internal/dashboard"
+	"github.com/gr1m0h/ichiza/internal/task"
 )
 
 // execCommand is swapped in tests so DashboardTasks can run without gh.
@@ -19,9 +20,11 @@ func taskKey(slug, id string) string {
 
 type TaskState struct {
 	Done             bool
+	IssueURL         string
 	Assignees        []string
 	Reminder         string
 	MentionAssignees bool
+	RuntimeTask      *task.Task
 }
 
 // DashboardTasks returns runtime state from all labelled event Dashboard
@@ -55,7 +58,12 @@ func parseDashboardTasks(out []byte) (map[string]TaskState, error) {
 		}
 		seenSlugs[doc.Slug] = true
 		for _, item := range doc.Tasks {
-			states[taskKey(doc.Slug, item.ID)] = TaskState{Done: item.Done, Assignees: item.CurrentAssignees(), Reminder: item.Reminder, MentionAssignees: item.MentionAssignees}
+			state := TaskState{Done: item.Done || item.Deleted, IssueURL: is.URL, Assignees: item.CurrentAssignees(), Reminder: item.Reminder, MentionAssignees: item.MentionAssignees}
+			if item.TaskSource == "runtime" && !item.Deleted {
+				runtimeTask := item.Task
+				state.RuntimeTask = &runtimeTask
+			}
+			states[taskKey(doc.Slug, item.ID)] = state
 		}
 	}
 	return states, nil

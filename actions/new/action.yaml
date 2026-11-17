@@ -46,6 +46,9 @@ runs:
         INPUT_LIFECYCLE: ${{ inputs.lifecycle }}
         INPUT_DASHBOARD: ${{ inputs.create-dashboard }}
         GH_TOKEN: ${{ env.GH_TOKEN }}
+    - name: Initialize shared metrics after creating the Dashboard Issue
+      if: inputs.create-dashboard == 'true'
+      uses: gr1m0h/ichiza/actions/metrics@v0
     # connpass has no write API: emit a paste-ready page draft instead
     # (copy the previous event on connpass → paste this → publish)
     - run: |

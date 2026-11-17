@@ -32,8 +32,9 @@ type Item struct {
 }
 
 type EventDigest struct {
-	Event *event.Event
-	Items []Item
+	Event    *event.Event
+	Items    []Item
+	IssueURL string
 }
 
 // Collect walks EventsDir and returns, per event, the tasks that are
@@ -69,8 +70,24 @@ func Collect(opt Options) ([]EventDigest, error) {
 			return nil, fmt.Errorf("event %s: %w", ent.Name(), err)
 		}
 		var items []Item
+		issueURL := ""
+		known := make(map[string]bool, len(tasks))
+		for i, t := range tasks {
+			known[t.ID] = true
+			if state := opt.TaskStates[taskKey(e.Event.Slug, t.ID)]; state.RuntimeTask != nil {
+				tasks[i] = *state.RuntimeTask
+			}
+		}
+		for key, state := range opt.TaskStates {
+			if state.RuntimeTask != nil && key == taskKey(e.Event.Slug, state.RuntimeTask.ID) && !known[state.RuntimeTask.ID] {
+				tasks = append(tasks, *state.RuntimeTask)
+			}
+		}
 		for _, t := range tasks {
 			state, exists := opt.TaskStates[taskKey(e.Event.Slug, t.ID)]
+			if state.IssueURL != "" {
+				issueURL = state.IssueURL
+			}
 			if exists && state.Done {
 				continue
 			}
@@ -95,26 +112,29 @@ func Collect(opt Options) ([]EventDigest, error) {
 			continue
 		}
 		sort.Slice(items, func(i, j int) bool { return items[i].Task.Due.Before(items[j].Task.Due) })
-		out = append(out, EventDigest{Event: e, Items: items})
+		out = append(out, EventDigest{Event: e, Items: items, IssueURL: issueURL})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Event.Event.Date < out[j].Event.Event.Date })
 	return out, nil
 }
 
-// Message renders the digests as Slack-friendly plain text.
+// Message renders an accessible text fallback and terminal output.
 // Tasks labeled "announce" get an X intent URL so the reminder doubles
 // as a one-tap SNS post without requiring an X API integration.
 func Message(now time.Time, digests []EventDigest, slackUsersByGitHub map[string]string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "⏰ ichiza remind — %s のタスクリマインド\n", now.Format("2006-01-02"))
+	fmt.Fprintf(&b, "ichiza · タスクリマインド｜%s\n", now.Format(time.DateOnly))
 	for _, d := range digests {
-		fmt.Fprintf(&b, "\n*%s*（%s / %s 開催）\n", d.Event.Event.Title, d.Event.Event.Slug, d.Event.Event.Date)
+		fmt.Fprintf(&b, "\n%s\n%s 開催\n", d.Event.Event.Title, d.Event.Event.Date)
 		for _, it := range d.Items {
 			label := deadline(it.DaysLeft)
 			if it.CheckToday {
-				label = "本日確認"
+				label = "本日確認 · " + label
 			}
-			fmt.Fprintf(&b, "• %s: %s（%s）", label, it.Task.Title, it.Task.Due.Format(time.DateOnly))
+			fmt.Fprintf(&b, "\n%s\n%s\n期日 %s", label, it.Task.Title, it.Task.Due.Format(time.DateOnly))
+			if len(it.Assignees) == 0 {
+				b.WriteString(" · 担当: 未割り当て")
+			}
 			for _, owner := range it.Assignees {
 				if slackID := slackUsersByGitHub[owner]; it.MentionAssignees && slackID != "" {
 					fmt.Fprintf(&b, " · <@%s>", slackID)
@@ -126,6 +146,9 @@ func Message(now time.Time, digests []EventDigest, slackUsersByGitHub map[string
 			if slices.Contains(it.Task.Labels, "announce") {
 				fmt.Fprintf(&b, "　└ X で告知: %s\n", XIntentURL(d.Event))
 			}
+		}
+		if validSlackURL(d.IssueURL) {
+			fmt.Fprintf(&b, "Event Hub: %s\n", d.IssueURL)
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")

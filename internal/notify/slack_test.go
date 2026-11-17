@@ -44,6 +44,24 @@ func TestSlackServerError(t *testing.T) {
 	}
 }
 
+func TestSlackRichPostsBlocksAndFallbackWithoutUnfurling(t *testing.T) {
+	var got SlackMessage
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Error(err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	want := SlackMessage{Text: "ichiza: overdue task, owner alice", Blocks: []SlackBlock{{Type: "header", Text: &SlackText{Type: "plain_text", Text: "ichiza"}}}}
+	if err := SlackRich(srv.URL, want); err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != want.Text || len(got.Blocks) != 1 || got.Blocks[0].Text.Text != "ichiza" || got.UnfurlLinks || got.UnfurlMedia || got.Mrkdwn {
+		t.Fatalf("structured payload changed: %+v", got)
+	}
+}
+
 func TestSlackUnreachable(t *testing.T) {
 	if err := Slack("http://127.0.0.1:1/webhook", "x"); err == nil {
 		t.Error("Slack() = nil error on unreachable host, want error")
