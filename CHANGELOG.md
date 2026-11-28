@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.5.5](https://github.com/gr1m0h/ichiza/compare/v0.5.4...v0.5.5) - 2026-11-28
+
+- Update dependency wrangler to v4.165.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/72
+- Update vitest monorepo to v5.1.1 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/73
+- Update dependency wrangler to v4.166.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/75
+- Update dependency hono to v4.13.20 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/76
+- Update dependency hono to v4.13.21 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/77
+- Update dependency wrangler to v4.167.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/78
+- Update dependency hono to v4.13.22 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/80
+- Update dependency wrangler to v4.168.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/79
+- Update vitest monorepo to v5.1.2 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/81
+- Update dependency hono to v4.13.23 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/82
+- Update dependency wrangler to v4.169.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/83
+
 ## [v0.5.4](https://github.com/gr1m0h/ichiza/compare/v0.5.3...v0.5.4) - 2026-11-17
 
 - Update dependency wrangler to v4.161.0 by @renovate[bot] in https://github.com/gr1m0h/ichiza/pull/63
